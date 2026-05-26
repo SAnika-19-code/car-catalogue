@@ -106,19 +106,30 @@ export default function CompanyMediaManager() {
 
     const urls: string[] = [];
 
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
     await Promise.all(
       files.map(async (file) => {
         const form = new FormData();
+
         form.append("file", file);
-        form.append("upload_preset", "rnomd7td");
+        form.append("upload_preset", uploadPreset!);
 
         const res = await fetch(
-          "https://api.cloudinary.com/v1_1/dcrssgl8p/image/upload",
-          { method: "POST", body: form }
+          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+          {
+            method: "POST",
+            body: form,
+          }
         );
 
         const data = await res.json();
-        if (data.secure_url) urls.push(data.secure_url);
+
+        if (data.secure_url) {
+          urls.push(data.secure_url);
+        }
       })
     );
 
