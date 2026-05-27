@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚗 Varsha Cushions — Car Accessories Catalogue Platform
 
-## Getting Started
+A modern premium catalogue platform built for a real automobile accessories business using **Next.js, Firebase, Cloudinary, and Vercel**.
 
-First, run the development server:
+---
+
+# 🌟 Features
+
+## Customer Features
+
+* Premium responsive gallery UI
+* Masonry-style photo layout
+* Fullscreen image viewer
+* Keyboard navigation
+* Mobile optimized experience
+* Company-wise catalogue browsing
+* Smooth image transitions
+
+---
+
+## Admin Features
+
+* Password protected admin panel
+* Add/Delete/Rename companies
+* Multi-image upload support
+* Drag & reorder gallery images
+* Bulk image selection
+* Delete confirmation modals
+* Recycle bin system
+* Real-time Firestore sync
+
+---
+
+# 🚀 Tech Stack
+
+* Next.js
+* React
+* TypeScript
+* Firebase Firestore
+* Cloudinary CDN
+* Tailwind CSS
+* Vercel Deployment
+
+---
+
+# ☁️ Cloudinary Optimization
+
+Images are optimized using Cloudinary transformations:
+
+* Automatic compression
+* Responsive resizing
+* Modern image formats
+* Faster mobile loading
+
+---
+
+# 📱 Responsive Design
+
+The platform is fully responsive and optimized for:
+
+* Mobile devices
+* Tablets
+* Desktop screens
+
+---
+
+# 🔒 Environment Variables
+
+Create a `.env.local` file:
+
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+```
+
+---
+
+# 🚀 Local Development
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Run development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# 🌍 Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deployed using Vercel.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+# 🎨 Design Philosophy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The UI follows a premium luxury aesthetic inspired by modern automotive brands with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+* dark elegant interface
+* gold accent palette
+* responsive layouts
+* immersive fullscreen viewing
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# 📸 Future Improvements
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* Advanced authentication
+* Customer inquiry system
+* AI image tagging
+* Search & filters
+* Analytics dashboard
+* Custom domain integration
+
+---
+
+# 👩‍💻 Developer
+
+Built by Sanika Gaikwad
