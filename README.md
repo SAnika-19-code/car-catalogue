@@ -128,4 +128,4 @@ The UI follows a premium luxury aesthetic inspired by modern automotive brands w
 
 # 👩‍💻 Developer
 
-Built by Sanika Gaikwad
+Built by Sanika Gaikwad with AI guidance
