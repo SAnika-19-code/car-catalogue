@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { db } from "@/firebase/config";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 
 import {
   DndContext,
@@ -77,7 +77,7 @@ export default function CompanyMediaManager() {
   const [files, setFiles] = useState<File[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
+  const [newCompanyName, setNewCompanyName] = useState("");
   /* ---------------- FETCH ---------------- */
   const fetchCompany = async () => {
     const ref = doc(db, "seat-covers", id as string);
@@ -189,7 +189,7 @@ export default function CompanyMediaManager() {
     fetchCompany();
   };
 
-  /* ---------------- EMPTY RECYCLE BIN (NEW) ---------------- */
+  /* ---------------- EMPTY RECYCLE BIN ---------------- */
   const emptyRecycleBin = async () => {
     if (!company) return;
 
@@ -213,6 +213,60 @@ export default function CompanyMediaManager() {
     );
 
     fetchCompany();
+  };
+
+/* ---------------- RENAME COMPANY ---------------- */
+  const renameCompany = async () => {
+    if (!company) return;
+
+    const newName = newCompanyName.trim();
+
+    if (!newName) {
+      alert("Enter a new company name");
+      return;
+    }
+
+    if (newName === id) {
+      alert("New name must be different");
+      return;
+    }
+
+    const confirmRename = confirm(
+      `Rename "${company.name}" to "${newName}"?`
+    );
+
+    if (!confirmRename) return;
+
+    try {
+      const oldRef = doc(
+        db,
+        "seat-covers",
+        id as string
+      );
+
+      const newRef = doc(
+        db,
+        "seat-covers",
+        newName
+      );
+
+      await setDoc(newRef, {
+        ...company,
+        name: newName,
+      });
+
+      await deleteDoc(oldRef);
+
+      alert("Company renamed successfully");
+
+      window.location.href =
+        `/admin/companies/${encodeURIComponent(
+          newName
+        )}`;
+    } catch (error) {
+      console.error(error);
+      alert("Rename failed");
+    }
   };
 
   /* ---------------- BULK SELECT ---------------- */
@@ -311,6 +365,31 @@ export default function CompanyMediaManager() {
       <h1 className="text-3xl mb-4 capitalize">
         {company.name}
       </h1>
+
+      <div className="bg-zinc-900 rounded-xl p-4 mb-6">
+        <h2 className="text-lg font-semibold mb-3">
+          Company Settings
+        </h2>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="New company name"
+            value={newCompanyName}
+            onChange={(e) =>
+              setNewCompanyName(e.target.value)
+            }
+            className="flex-1 bg-black border border-zinc-700 rounded px-3 py-2"
+          />
+
+          <button
+            onClick={renameCompany}
+            className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded"
+          >
+            Rename
+          </button>
+        </div>
+      </div>
 
       {/* UPLOAD */}
       <div className="flex gap-2 mb-4">
