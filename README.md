@@ -20,14 +20,18 @@ A modern premium catalogue platform built for a real automobile accessories busi
 
 ## Admin Features
 
-* Password-protected admin panel
-* Add/Delete companies
-* Multi-image upload support
-* Drag & reorder gallery images
-* Bulk image selection
-* Delete confirmation modals
-* Recycle bin system
-* Real-time Firestore sync
+### Company Management
+- Create new companies
+- Rename companies without losing gallery data
+- Manage company image collections
+- Delete companies safely
+
+### Image Management
+- Upload multiple images
+- Reorder images via drag-and-drop
+- Bulk select and delete images
+- Restore deleted images from recycle bin
+- Permanently empty recycle bin
 
 ---
 
