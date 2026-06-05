@@ -46,24 +46,25 @@ export function GroupedCataloguePage({ category }: GroupedCataloguePageProps) {
   }, [category.collection]);
 
   return (
-    <main className="min-h-screen bg-black p-6 text-white md:p-10">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold">{category.title}</h1>
-        <p className="mt-2 text-gray-400">{category.description}</p>
+    <main className="catalogue-shell">
+      <div className="catalogue-header">
+        <p className="eyebrow">Company collections</p>
+        <h1>{category.title}</h1>
+        <p>{category.description}</p>
       </div>
 
       {loading ? (
-        <div className="text-gray-400">Loading...</div>
+        <div className="loading-state">Loading...</div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="company-grid">
           {companies.map((company) => (
             <Link
               key={company.id}
               href={`/${category.slug}/${company.id}`}
-              className="card block p-6 transition hover:scale-105"
+              className="catalogue-card company-card"
             >
-              <h2 className="text-xl capitalize">{company.name}</h2>
-              <p className="mt-2 text-sm text-gray-400">
+              <h2>{company.name}</h2>
+              <p>
                 {company.images.length} designs
               </p>
             </Link>

@@ -15,8 +15,10 @@ function NavItem({ href, label, active }: NavItemProps) {
   return (
     <Link
       href={href}
-      className={`block rounded p-3 ${
-        active ? "bg-white text-black" : "text-white hover:bg-zinc-800"
+      className={`block rounded-lg p-3 text-sm font-semibold transition ${
+        active
+          ? "bg-[#d0ab4f] text-[#10182f]"
+          : "text-white/80 hover:bg-white/10 hover:text-white"
       }`}
     >
       {label}
@@ -33,9 +35,11 @@ export default function AdminLayout({
 
   return (
     <AdminAuthGate>
-      <div className="flex min-h-screen bg-black text-white">
-        <aside className="w-64 bg-zinc-950 p-4">
-          <h1 className="mb-6 text-xl font-bold">Admin Panel</h1>
+      <div className="flex min-h-screen bg-[#111a33] text-white">
+        <aside className="w-64 border-r border-[#d0ab4f]/25 bg-[#0b1020] p-4">
+          <h1 className="mb-6 text-xl font-bold text-[#d0ab4f]">
+            Admin Panel
+          </h1>
 
           <nav className="space-y-2">
             <NavItem href="/admin" label="Dashboard" active={path === "/admin"} />
@@ -46,7 +50,7 @@ export default function AdminLayout({
             />
 
             <div className="pt-4">
-              <p className="mb-2 px-3 text-xs uppercase text-gray-500">
+              <p className="mb-2 px-3 text-xs font-bold uppercase text-[#d0ab4f]">
                 Galleries
               </p>
               {catalogueCategories.map((category) => (

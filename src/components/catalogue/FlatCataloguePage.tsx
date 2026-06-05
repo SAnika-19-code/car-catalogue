@@ -42,14 +42,15 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
   const images = gallery?.images ?? [];
 
   return (
-    <main className="min-h-screen bg-black p-6 text-white md:p-10">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold">{category.title}</h1>
-        <p className="mt-2 text-gray-400">{category.description}</p>
+    <main className="catalogue-shell">
+      <div className="catalogue-header">
+        <p className="eyebrow">Catalogue collection</p>
+        <h1>{category.title}</h1>
+        <p>{category.description}</p>
       </div>
 
       {loading ? (
-        <div className="text-gray-400">Loading...</div>
+        <div className="loading-state">Loading...</div>
       ) : (
         <GalleryGrid
           images={images}

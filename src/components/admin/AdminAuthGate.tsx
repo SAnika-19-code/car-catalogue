@@ -37,7 +37,7 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#111a33] text-white">
         Loading...
       </div>
     );
@@ -45,16 +45,16 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
 
   if (!loggedIn) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black px-4">
-        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
-          <h1 className="mb-6 text-center text-3xl font-bold text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[#111a33] px-4">
+        <div className="w-full max-w-md rounded-lg border border-[#d0ab4f]/25 bg-[#1d2a4b] p-8 shadow-2xl">
+          <h1 className="mb-6 text-center text-3xl font-bold text-[#d0ab4f]">
             Admin Login
           </h1>
 
           <input
             type="email"
             placeholder="Email"
-            className="mb-4 w-full rounded bg-zinc-800 p-3 text-white outline-none"
+            className="mb-4 w-full rounded-lg border border-[#d0ab4f]/25 bg-[#0b1020] p-3 text-white outline-none focus:border-[#d0ab4f]"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -62,7 +62,7 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
           <input
             type="password"
             placeholder="Password"
-            className="mb-4 w-full rounded bg-zinc-800 p-3 text-white outline-none"
+            className="mb-4 w-full rounded-lg border border-[#d0ab4f]/25 bg-[#0b1020] p-3 text-white outline-none focus:border-[#d0ab4f]"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
@@ -70,7 +70,7 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
           <button
             type="button"
             onClick={login}
-            className="w-full rounded bg-white py-3 font-semibold text-black transition hover:bg-gray-200"
+            className="w-full rounded-lg bg-[#d0ab4f] py-3 font-semibold text-[#10182f] transition hover:bg-[#ead59a]"
           >
             Login
           </button>
@@ -85,7 +85,7 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
         <button
           type="button"
           onClick={() => void signOut(auth)}
-          className="rounded bg-red-500 px-4 py-2 text-white"
+          className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-500"
         >
           Logout
         </button>

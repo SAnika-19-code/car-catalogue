@@ -54,13 +54,15 @@ function SortableImage({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
-      className="relative overflow-hidden rounded bg-zinc-900"
+      className={`relative overflow-hidden rounded-lg border bg-[#0b1020] ${
+        selected ? "border-red-400" : "border-[#d0ab4f]/25"
+      }`}
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="absolute right-1 top-1 z-10 bg-black/70 px-2 py-1 text-xs text-white"
+        className="absolute right-1 top-1 z-10 rounded bg-black/70 px-2 py-1 text-xs text-white"
         aria-label={`Move design ${index + 1}`}
       >
         Move
@@ -70,14 +72,14 @@ function SortableImage({
         <img
           src={image}
           alt={`Design ${index + 1}`}
-          className={`h-24 w-full object-cover ${selected ? "ring-2 ring-red-500" : ""}`}
+          className="h-24 w-full object-cover"
         />
       </button>
 
       <button
         type="button"
         onClick={() => onSelect(image)}
-        className="w-full bg-black/80 py-1 text-xs text-white"
+        className="w-full bg-[#1d2a4b] py-1 text-xs font-semibold text-white"
       >
         {selected ? "Selected" : "Select"}
       </button>
@@ -273,15 +275,17 @@ export function AdminGalleryManager({
   };
 
   if (loading || !gallery) {
-    return <div className="text-gray-400">Loading...</div>;
+    return <div className="text-white/65">Loading...</div>;
   }
 
   return (
     <div className="text-white">
-      <h1 className="mb-4 text-3xl capitalize">{gallery.name}</h1>
+      <h1 className="mb-4 text-3xl font-bold capitalize">{gallery.name}</h1>
 
-      <section className="mb-6 rounded-xl bg-zinc-900 p-4">
-        <h2 className="mb-3 text-lg font-semibold">Gallery Settings</h2>
+      <section className="mb-6 rounded-lg border border-[#d0ab4f]/25 bg-white/10 p-4">
+        <h2 className="mb-3 text-lg font-semibold text-[#d0ab4f]">
+          Gallery Settings
+        </h2>
 
         <div className="flex flex-col gap-2 md:flex-row">
           <input
@@ -289,13 +293,13 @@ export function AdminGalleryManager({
             placeholder="Gallery name"
             value={newName}
             onChange={(event) => setNewName(event.target.value)}
-            className="flex-1 rounded border border-zinc-700 bg-black px-3 py-2"
+            className="flex-1 rounded-lg border border-[#d0ab4f]/25 bg-[#0b1020] px-3 py-2 text-white outline-none focus:border-[#d0ab4f]"
           />
 
           <button
             type="button"
             onClick={renameGallery}
-            className="rounded bg-yellow-600 px-4 py-2 hover:bg-yellow-700"
+            className="rounded-lg bg-[#d0ab4f] px-4 py-2 font-semibold text-[#10182f] hover:bg-[#ead59a]"
           >
             Save Name
           </button>
@@ -309,12 +313,13 @@ export function AdminGalleryManager({
           onChange={(event) =>
             setFiles(Array.from(event.target.files ?? []))
           }
+          className="rounded-lg border border-[#d0ab4f]/25 bg-[#0b1020] p-2 text-sm text-white"
         />
 
         <button
           type="button"
           onClick={uploadImages}
-          className="rounded bg-blue-600 px-3 py-2"
+          className="rounded-lg bg-[#d0ab4f] px-3 py-2 font-semibold text-[#10182f]"
         >
           Upload
         </button>
@@ -322,7 +327,7 @@ export function AdminGalleryManager({
         <button
           type="button"
           onClick={bulkDelete}
-          className="rounded bg-red-600 px-3 py-2"
+          className="rounded-lg bg-red-600 px-3 py-2 font-semibold text-white"
         >
           Delete Selected
         </button>
@@ -348,12 +353,12 @@ export function AdminGalleryManager({
       {trash.length > 0 && (
         <section className="mt-6">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-gray-400">Recycle Bin</h2>
+            <h2 className="text-[#d0ab4f]">Recycle Bin</h2>
 
             <button
               type="button"
               onClick={emptyRecycleBin}
-              className="rounded bg-red-700 px-3 py-1 text-xs"
+              className="rounded-lg bg-red-700 px-3 py-1 text-xs text-white"
             >
               Empty Bin
             </button>
@@ -361,7 +366,7 @@ export function AdminGalleryManager({
 
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {trash.map((image, index) => (
-              <div key={`${image}-${index}`} className="relative">
+              <div key={`${image}-${index}`} className="relative overflow-hidden rounded-lg border border-[#d0ab4f]/20">
                 <img
                   src={image}
                   alt={`Deleted design ${index + 1}`}
@@ -371,7 +376,7 @@ export function AdminGalleryManager({
                 <button
                   type="button"
                   onClick={() => restoreImage(image)}
-                  className="absolute bottom-1 left-1 rounded bg-green-600 px-2 py-1 text-xs"
+                  className="absolute bottom-1 left-1 rounded bg-green-600 px-2 py-1 text-xs text-white"
                 >
                   Restore
                 </button>
@@ -382,11 +387,11 @@ export function AdminGalleryManager({
       )}
 
       {selectedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
+        <div className="lightbox">
           <button
             type="button"
             onClick={() => setSelectedImage(null)}
-            className="absolute right-5 top-5 text-3xl"
+            className="lightbox-control lightbox-close"
             aria-label="Close image viewer"
           >
             x
@@ -395,7 +400,7 @@ export function AdminGalleryManager({
           <img
             src={selectedImage}
             alt="Selected design"
-            className="max-h-[90vh] max-w-[90vw] object-contain"
+            className="lightbox-image"
           />
         </div>
       )}
@@ -460,40 +465,40 @@ export function AdminCompanyList({ category }: AdminCompanyListProps) {
 
   return (
     <div className="text-white">
-      <div className="mb-6">
+      <div className="mb-6 border-b border-[#d0ab4f]/25 pb-4">
         <h1 className="text-3xl font-bold">{category.title}</h1>
-        <p className="mt-1 text-gray-400">Manage company-wise galleries.</p>
+        <p className="mt-1 text-white/65">Manage company-wise galleries.</p>
       </div>
 
       <div className="mb-6 flex flex-col gap-2 md:flex-row">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="rounded bg-zinc-900 p-2"
+          className="rounded-lg border border-[#d0ab4f]/25 bg-[#0b1020] p-2 text-white outline-none focus:border-[#d0ab4f]"
           placeholder="Add company"
         />
 
         <button
           type="button"
           onClick={addCompany}
-          className="rounded bg-green-600 px-3 py-2"
+          className="rounded-lg bg-[#d0ab4f] px-3 py-2 font-semibold text-[#10182f]"
         >
           Add
         </button>
       </div>
 
       {loading ? (
-        <div className="text-gray-400">Loading...</div>
+        <div className="text-white/65">Loading...</div>
       ) : (
         <div className="space-y-3">
           {companies.map((company) => (
             <div
               key={company.id}
-              className="flex items-center justify-between rounded bg-zinc-900 p-4"
+              className="flex items-center justify-between rounded-lg border border-[#d0ab4f]/20 bg-white/10 p-4"
             >
               <a
                 href={`/admin/categories/${category.slug}/${company.id}`}
-                className="capitalize hover:text-gray-300"
+                className="capitalize hover:text-[#d0ab4f]"
               >
                 {company.name}
               </a>
@@ -501,7 +506,7 @@ export function AdminCompanyList({ category }: AdminCompanyListProps) {
               <button
                 type="button"
                 onClick={() => deleteCompany(company)}
-                className="text-red-400"
+                className="font-semibold text-red-300"
               >
                 Delete
               </button>

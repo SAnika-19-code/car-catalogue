@@ -54,12 +54,15 @@ export function CompanyCataloguePage({
   const title = company?.name ?? category.title;
 
   return (
-    <main className="min-h-screen bg-black p-6 text-white md:p-10">
+    <main className="catalogue-shell">
       {loading ? (
-        <div className="text-gray-400">Loading...</div>
+        <div className="loading-state">Loading...</div>
       ) : company ? (
         <>
-          <h1 className="mb-8 text-4xl font-bold capitalize">{company.name}</h1>
+          <div className="catalogue-header">
+            <p className="eyebrow">{category.title}</p>
+            <h1 className="capitalize">{company.name}</h1>
+          </div>
 
           <GalleryGrid
             images={images}
@@ -75,7 +78,7 @@ export function CompanyCataloguePage({
           />
         </>
       ) : (
-        <div className="text-gray-400">Catalogue not found.</div>
+        <div className="empty-state">Catalogue not found.</div>
       )}
     </main>
   );

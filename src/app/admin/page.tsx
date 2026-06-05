@@ -64,36 +64,39 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 border-b border-[#d0ab4f]/25 pb-4">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="mt-1 text-gray-400">Welcome to admin panel</p>
+        <p className="mt-1 text-white/65">Welcome to admin panel</p>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl bg-zinc-900 p-4">
-          <p className="text-gray-400">Categories</p>
-          <h2 className="text-2xl">{catalogueCategories.length}</h2>
+        <div className="rounded-lg border border-[#d0ab4f]/25 bg-white/10 p-4 shadow-lg">
+          <p className="text-sm font-semibold text-[#d0ab4f]">Categories</p>
+          <h2 className="mt-1 text-2xl font-bold">{catalogueCategories.length}</h2>
         </div>
 
-        <div className="rounded-xl bg-zinc-900 p-4">
-          <p className="text-gray-400">Galleries</p>
-          <h2 className="text-2xl">{totalGalleries}</h2>
+        <div className="rounded-lg border border-[#d0ab4f]/25 bg-white/10 p-4 shadow-lg">
+          <p className="text-sm font-semibold text-[#d0ab4f]">Galleries</p>
+          <h2 className="mt-1 text-2xl font-bold">{totalGalleries}</h2>
         </div>
 
-        <div className="rounded-xl bg-zinc-900 p-4">
-          <p className="text-gray-400">Total Images</p>
-          <h2 className="text-2xl">{totalImages}</h2>
+        <div className="rounded-lg border border-[#d0ab4f]/25 bg-white/10 p-4 shadow-lg">
+          <p className="text-sm font-semibold text-[#d0ab4f]">Total Images</p>
+          <h2 className="mt-1 text-2xl font-bold">{totalImages}</h2>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-gray-400">Loading...</div>
+        <div className="text-white/65">Loading...</div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {stats.map((item) => (
-            <div key={item.slug} className="rounded-xl bg-zinc-900 p-4">
+            <div
+              key={item.slug}
+              className="rounded-lg border border-[#d0ab4f]/20 bg-[#1d2a4b]/75 p-4"
+            >
               <h2 className="text-lg font-semibold">{item.title}</h2>
-              <p className="mt-2 text-sm text-gray-400">
+              <p className="mt-2 text-sm text-white/65">
                 {item.galleries} galleries / {item.images} images
               </p>
             </div>

@@ -39,11 +39,11 @@ export function ImageLightbox({
   if (selectedIndex === null || images.length === 0) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95">
+    <div className="lightbox">
       <button
         type="button"
         onClick={() => onSelect(null)}
-        className="absolute right-5 top-5 text-3xl text-white"
+        className="lightbox-control lightbox-close"
         aria-label="Close image viewer"
       >
         x
@@ -54,7 +54,7 @@ export function ImageLightbox({
         onClick={() =>
           onSelect((selectedIndex - 1 + images.length) % images.length)
         }
-        className="absolute left-5 text-4xl text-white"
+        className="lightbox-control lightbox-prev"
         aria-label="Previous image"
       >
         {"<"}
@@ -63,13 +63,13 @@ export function ImageLightbox({
       <img
         src={images[selectedIndex]}
         alt={`${title} design ${selectedIndex + 1}`}
-        className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain"
+        className="lightbox-image"
       />
 
       <button
         type="button"
         onClick={() => onSelect((selectedIndex + 1) % images.length)}
-        className="absolute right-5 text-4xl text-white"
+        className="lightbox-control lightbox-next"
         aria-label="Next image"
       >
         {">"}
