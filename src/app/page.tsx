@@ -1,47 +1,34 @@
 import Link from "next/link";
+import { catalogueCategories } from "@/catalogue/categories";
 
 export default function Home() {
   return (
-    <div className="min-h-screen p-10 bg-black text-white">
-
-      {/* HERO */}
-      <div className="text-center mb-12">
+    <main className="min-h-screen bg-black p-6 text-white md:p-10">
+      <div className="mb-12 text-center">
         <h1 className="text-5xl font-bold">
           Premium Car Accessories Catalogue
         </h1>
-        <p className="text-gray-400 mt-3">
-          Explore seat covers, lamination & steering designs
+        <p className="mt-3 text-gray-400">
+          Explore seat covers, lamination, steering covers, and roof designs
         </p>
       </div>
 
-      {/* CATEGORIES */}
-      <div className="grid md:grid-cols-3 gap-6">
-
-        <Link href="/seat-covers">
-          <div className="card p-8 text-center hover:scale-105 transition">
-            <h2 className="text-2xl font-semibold">
-              Car Seat Covers
-            </h2>
-          </div>
-        </Link>
-
-        <Link href="/floor-lamination">
-          <div className="card p-8 text-center hover:scale-105 transition">
-            <h2 className="text-2xl font-semibold">
-              Floor Lamination
-            </h2>
-          </div>
-        </Link>
-
-        <Link href="/steering-covers">
-          <div className="card p-8 text-center hover:scale-105 transition">
-            <h2 className="text-2xl font-semibold">
-              Steering Covers
-            </h2>
-          </div>
-        </Link>
-
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {catalogueCategories.map((category) => (
+          <Link
+            key={category.slug}
+            href={`/${category.slug}`}
+            className="card block h-full p-6 text-center transition hover:scale-105"
+          >
+            <h2 className="text-2xl font-semibold">{category.title}</h2>
+            <p className="mt-3 text-sm text-gray-400">
+              {category.mode === "grouped"
+                ? "Company-wise gallery"
+                : "Direct gallery"}
+            </p>
+          </Link>
+        ))}
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,83 +1,105 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { catalogueCategories } from "@/catalogue/categories";
 import { db } from "@/firebase/config";
 
-import {
-  collection,
-  getDocs,
-} from "firebase/firestore";
+type CategoryStat = {
+  slug: string;
+  title: string;
+  galleries: number;
+  images: number;
+};
 
 export default function AdminDashboard() {
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [stats, setStats] = useState<CategoryStat[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCompanies = async () => {
-      const snap = await getDocs(
-        collection(db, "seat-covers")
-      );
+    let active = true;
 
-      setCompanies(
-        snap.docs.map((d) => d.data())
-      );
+    Promise.all(
+      catalogueCategories.map(async (category) => {
+        if (category.mode === "grouped") {
+          const snapshot = await getDocs(collection(db, category.collection));
+          const imageCount = snapshot.docs.reduce((total, item) => {
+            const data = item.data() as { images?: string[] };
+            return total + (data.images?.length ?? 0);
+          }, 0);
+
+          return {
+            slug: category.slug,
+            title: category.title,
+            galleries: snapshot.docs.length,
+            images: imageCount,
+          };
+        }
+
+        const snapshot = await getDoc(doc(db, "catalogues", category.collection));
+        const data = snapshot.data() as { images?: string[] } | undefined;
+
+        return {
+          slug: category.slug,
+          title: category.title,
+          galleries: 1,
+          images: data?.images?.length ?? 0,
+        };
+      })
+    )
+      .then((nextStats) => {
+        if (active) setStats(nextStats);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
     };
-
-    fetchCompanies();
   }, []);
 
-  const totalImages = companies.reduce(
-    (acc, c) => acc + (c.images?.length || 0),
-    0
-  );
+  const totalImages = stats.reduce((total, item) => total + item.images, 0);
+  const totalGalleries = stats.reduce((total, item) => total + item.galleries, 0);
 
   return (
-    <div className="p-6 bg-black min-h-screen text-white">
-      
+    <div>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">
-          Dashboard
-        </h1>
-
-        <p className="text-gray-400 mt-1">
-          Welcome to admin panel
-        </p>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="mt-1 text-gray-400">Welcome to admin panel</p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <p className="text-gray-400">
-            Companies
-          </p>
-
-          <h2 className="text-2xl">
-            {companies.length}
-          </h2>
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="rounded-xl bg-zinc-900 p-4">
+          <p className="text-gray-400">Categories</p>
+          <h2 className="text-2xl">{catalogueCategories.length}</h2>
         </div>
 
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <p className="text-gray-400">
-            Total Images
-          </p>
-
-          <h2 className="text-2xl">
-            {totalImages}
-          </h2>
+        <div className="rounded-xl bg-zinc-900 p-4">
+          <p className="text-gray-400">Galleries</p>
+          <h2 className="text-2xl">{totalGalleries}</h2>
         </div>
 
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <p className="text-gray-400">
-            Status
-          </p>
-
-          <h2 className="text-green-500">
-            Active
-          </h2>
+        <div className="rounded-xl bg-zinc-900 p-4">
+          <p className="text-gray-400">Total Images</p>
+          <h2 className="text-2xl">{totalImages}</h2>
         </div>
-
       </div>
+
+      {loading ? (
+        <div className="text-gray-400">Loading...</div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {stats.map((item) => (
+            <div key={item.slug} className="rounded-xl bg-zinc-900 p-4">
+              <h2 className="text-lg font-semibold">{item.title}</h2>
+              <p className="mt-2 text-sm text-gray-400">
+                {item.galleries} galleries / {item.images} images
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-
-
