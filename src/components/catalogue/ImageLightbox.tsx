@@ -1,6 +1,6 @@
 "use client";
 
-import { type TouchEvent, useEffect, useRef } from "react";
+import { type TouchEvent, useEffect, useRef, useState } from "react";
 
 type ImageLightboxProps = {
   images: string[];
@@ -21,6 +21,9 @@ export function ImageLightbox({
 }: ImageLightboxProps) {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<
+    "next" | "previous" | null
+  >(null);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -82,8 +85,10 @@ export function ImageLightbox({
     }
 
     if (distanceX < 0) {
+      setSwipeDirection("next");
       onSelect((selectedIndex + 1) % images.length);
     } else {
+      setSwipeDirection("previous");
       onSelect((selectedIndex - 1 + images.length) % images.length);
     }
   };
@@ -112,12 +117,18 @@ export function ImageLightbox({
 
       <div className="lightbox-content">
         <img
+          key={selectedImage}
           src={selectedImage}
           alt={`${title} design ${selectedIndex + 1}`}
-          className="lightbox-image"
+          className={`lightbox-image ${
+            swipeDirection
+              ? `lightbox-image-swipe-${swipeDirection}`
+              : ""
+          }`}
           draggable={false}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          onAnimationEnd={() => setSwipeDirection(null)}
         />
       </div>
 

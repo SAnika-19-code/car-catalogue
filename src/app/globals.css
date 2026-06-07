@@ -854,9 +854,19 @@ img {
   }
 
   .category-grid,
-  .company-grid,
-  .gallery-grid {
+  .company-grid {
     grid-template-columns: 1fr;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .gallery-tile {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    box-shadow: none;
   }
 
   .catalogue-card {
@@ -874,6 +884,14 @@ img {
 
   .lightbox-image {
     touch-action: pan-y;
+  }
+
+  .lightbox-image-swipe-next {
+    animation: lightbox-slide-from-right 0.28s ease-out;
+  }
+
+  .lightbox-image-swipe-previous {
+    animation: lightbox-slide-from-left 0.28s ease-out;
   }
 
   .lightbox-inquiry-bar {
@@ -915,6 +933,30 @@ img {
     justify-content: flex-end;
     padding: 12px;
     background: rgba(11, 16, 32, 0.9);
+  }
+}
+
+@keyframes lightbox-slide-from-right {
+  from {
+    opacity: 0.35;
+    transform: translateX(56px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes lightbox-slide-from-left {
+  from {
+    opacity: 0.35;
+    transform: translateX(-56px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
