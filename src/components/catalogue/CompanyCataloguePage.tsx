@@ -74,6 +74,8 @@ export function CompanyCataloguePage({
             images={images}
             selectedIndex={selectedIndex}
             title={title}
+            inquiryLabel={category.inquiryLabel}
+            inquiryContext={company.name}
             onSelect={setSelectedIndex}
           />
         </>

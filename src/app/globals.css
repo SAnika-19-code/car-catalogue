@@ -283,11 +283,40 @@ img {
 
 .lightbox-image {
   max-width: min(92vw, 1180px);
-  max-height: 86vh;
+  max-height: 76vh;
   border: 1px solid var(--line);
   border-radius: 8px;
   object-fit: contain;
   box-shadow: var(--shadow);
+  user-select: none;
+}
+
+.lightbox-content {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.whatsapp-inquiry {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: #168a45;
+  color: #ffffff;
+  padding: 12px 20px;
+  font-weight: 700;
+  text-align: center;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.whatsapp-inquiry:hover {
+  transform: translateY(-2px);
+  background: #0f7137;
 }
 
 .lightbox-control {
@@ -814,12 +843,13 @@ img {
     min-height: 145px;
   }
 
-  .lightbox-prev {
-    left: 12px;
+  .lightbox-prev,
+  .lightbox-next {
+    display: none;
   }
 
-  .lightbox-next {
-    right: 12px;
+  .lightbox-image {
+    touch-action: pan-y;
   }
 
   .admin-main {

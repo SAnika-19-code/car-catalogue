@@ -82,7 +82,11 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+NEXT_PUBLIC_WHATSAPP_NUMBER=
 ```
+
+Set `NEXT_PUBLIC_WHATSAPP_NUMBER` to the business WhatsApp number with the
+country code and without `+`, spaces, or dashes. Example: `919876543210`.
 
 ---
 

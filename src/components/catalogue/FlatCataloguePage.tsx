@@ -63,6 +63,7 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
         images={images}
         selectedIndex={selectedIndex}
         title={category.title}
+        inquiryLabel={category.inquiryLabel}
         onSelect={setSelectedIndex}
       />
     </main>
