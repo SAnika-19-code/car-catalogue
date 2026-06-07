@@ -1,76 +1,169 @@
-# Varsha Cushions — Car Accessories Catalogue Platform
+# Varsha Cushions - Car Accessories Catalogue
 
-A modern premium catalogue platform built for a real automobile accessories business using **Next.js, Firebase, Cloudinary, and Vercel**.
+A responsive product catalogue and administration platform for an automotive
+accessories business. Built with Next.js, Firebase, Cloudinary, and Vercel.
 
----
+## Catalogue Categories
 
-# Features
+The catalogue is driven by reusable category configuration instead of separate
+copies of the same gallery code.
+
+### Company-wise galleries
+
+- Car Seat Covers
+- Roof Design
+
+Customers first choose a company and then browse its designs.
+
+### Direct galleries
+
+- Steering Covers
+- Floor Lamination
+
+Customers browse all designs directly without choosing a company.
 
 ## Customer Features
 
-* Premium responsive gallery UI
-* Masonry-style photo layout
-* Fullscreen image viewer
-* Keyboard navigation
-* Mobile optimized experience
-* Company-wise catalogue browsing
-* Smooth image transitions
+- Responsive navy-and-gold catalogue interface
+- Company-wise and direct gallery modes
+- Three-column, Google Photos-style mobile gallery
+- Fullscreen image viewer
+- Desktop arrow and keyboard navigation
+- Mobile swipe navigation
+- Finger-following mobile slide animation
+- Previous and next image preloading within the swipe track
+- WhatsApp inquiry button for every design
+- Product type, company name, and image link included in inquiries
+- Public Cloudinary display watermarks
+- Consistently scaled watermarks across different image dimensions
+- Lazy-loaded 480 x 480 Cloudinary gallery thumbnails
+- Automatic modern image formats and mobile-friendly quality compression
+- Fullscreen images limited to 1600 x 1600 instead of original resolution
+- Original Cloudinary uploads remain unchanged
+- Right-click, image dragging, selection, and mobile long-press deterrents
 
----
+> Browser protections cannot completely prevent screenshots or access through
+> developer tools. Display watermarks provide the stronger protection.
 
 ## Admin Features
 
-### Company Management
-- Create new companies
-- Rename companies without losing gallery data
-- Manage company image collections
-- Delete companies safely
+- Firebase Authentication login gate for the complete admin area
+- Dashboard totals across all catalogue categories
+- Category-based gallery management
+- Create, rename, and delete companies
+- Upload multiple images through Cloudinary
+- Drag-and-drop image ordering
+- Bulk image selection and deletion
+- Recycle bin with image restoration
+- Permanent recycle-bin clearing with confirmation
+- Clean original images in admin views without public watermarks
+- Legacy seat-cover admin links redirect to the new category routes
 
-### Image Management
-- Upload multiple images
-- Reorder images via drag-and-drop
-- Bulk select and delete images
-- Restore deleted images from recycle bin
-- Permanently empty recycle bin
+## Architecture
 
----
+Category behavior is configured in:
 
-# Tech Stack
+```text
+src/catalogue/categories.ts
+```
 
-* Next.js
-* React
-* TypeScript
-* Firebase Firestore
-* Cloudinary CDN
-* Tailwind CSS
-* Vercel Deployment
+Shared customer components support both gallery modes:
 
----
+```text
+src/components/catalogue/
+```
 
-# Cloudinary Optimization
+Shared admin components handle category, company, and image management:
 
-Images are optimized using Cloudinary transformations:
+```text
+src/components/admin/
+```
 
-* Automatic compression
-* Responsive resizing
-* Modern image formats
-* Faster mobile loading
+Public Cloudinary watermark URLs are generated in:
 
----
+```text
+src/catalogue/cloudinary.ts
+```
 
-# Responsive Design
+## Firestore Structure
 
-The platform is fully responsive and optimized for:
+Company-wise galleries use one Firestore collection per category:
 
-* Mobile devices
-* Tablets
-* Desktop screens
+```text
+seat-covers/{companyId}
+roof-design/{companyId}
+```
 
----
+Each company document contains:
 
-# Environment Variables
+```text
+name: string
+images: string[]
+trash: string[]
+```
 
-Create a `.env.local` file:
+Direct galleries use documents inside the `catalogues` collection:
+
+```text
+catalogues/steering-covers
+catalogues/floor-lamination
+```
+
+Each direct-gallery document contains the same `name`, `images`, and `trash`
+fields.
+
+## Firestore Security Rules
+
+Public visitors can read catalogue data. Only authenticated Firebase users can
+write:
+
+```js
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /seat-covers/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /roof-design/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /catalogues/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+## Cloudinary
+
+Images are uploaded once and their clean URLs are stored in Firestore.
+
+Public pages generate transformed Cloudinary URLs that add a centered,
+semi-transparent text watermark. Admin pages continue using the original URLs.
+The watermark width is relative to each image, keeping its proportions
+consistent across portrait and landscape designs.
+
+Gallery grids request lazy-loaded `480 x 480` cropped thumbnails with automatic
+format selection and economical quality compression. Fullscreen delivery uses
+automatic format and quality settings and limits images to `1600 x 1600`.
+Original uploads are not modified.
+
+If Cloudinary Strict Transformations are enabled, allow the watermark
+transformation used by the application.
+
+## Environment Variables
+
+Create `.env.local`:
 
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -84,98 +177,53 @@ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
 NEXT_PUBLIC_CLOUDINARY_WATERMARK_TEXT=Varsha Cushions
 NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH=0.48
-NEXT_PUBLIC_WHATSAPP_NUMBER=
+
+NEXT_PUBLIC_WHATSAPP_NUMBER=919766222351
 ```
 
-Public catalogue views add the watermark through a Cloudinary URL
-transformation. Original Cloudinary uploads remain unchanged, and admin views
-continue to show the original images.
+`NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH` is a proportion of the image width.
+For example, `0.48` means 48%.
 
-`NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH` controls the watermark width relative
-to each image. For example, `0.48` makes it 48% of every image's width.
+The WhatsApp number must include the country code without `+`, spaces, or
+dashes.
 
-Set `NEXT_PUBLIC_WHATSAPP_NUMBER` to the business WhatsApp number with the
-country code and without `+`, spaces, or dashes. Example: `919876543210`.
+Add the same values to the Vercel project before deploying.
 
----
-
-# Local Development
-
-Install dependencies:
+## Local Development
 
 ```bash
 npm install
-```
-
-Run development server:
-
-```bash
 npm run dev
 ```
 
----
+Open:
 
-# Deployment
+```text
+http://localhost:3000
+```
 
-Deployed using Vercel.
+## Verification
 
+```bash
+npm run lint
+npm run build
+```
 
----
+The current lint run completes with image-element optimization warnings only.
+The production build passes successfully.
 
-# Future Improvements
+## Tech Stack
 
-* Advanced authentication
-* Customer inquiry system
-* AI image tagging
-* Search & filters
-* Analytics dashboard
-* Custom domain integration
+- Next.js 16
+- React 19
+- TypeScript
+- Firebase Authentication
+- Firebase Firestore
+- Cloudinary
+- Tailwind CSS 4
+- dnd-kit
+- Vercel
 
----
+## Developer
 
-# Developer
-
-Built by Sanika Gaikwad with AI guidance
-
----
----
-<br>
-
-# Sreenshots
-
-<br>
-
-## Home Page
-  <p align='center'>
-    <img alt="Homepage will direct to catalogue" src="https://github.com/user-attachments/assets/ab9c66c7-6486-4e5a-895f-8aaf8c2838da" width='70%' />
-  </p>
-  
-<br>
-
-## Customer View 
-  <p align='center'>
-    <img alt="Main Page" src="https://github.com/user-attachments/assets/cfd22925-168d-4c85-aca5-f5d3a30f0f38" width='70%' />
-    <br><br>
-    <img alt="Company vise categorization" src="https://github.com/user-attachments/assets/ac8a963c-9139-493b-be29-8fdf92c898aa" width='70%' />
-    <br><br>
-    <img alt="Photo gallery of that company car" src="https://github.com/user-attachments/assets/c9747ba9-b673-47df-9108-3cd17d8cb3f2" width='70%' />
-  </p>
-  
-<br>
-
-## Admin View
-  <p align='center'>
-    <img alt="Admin Panel and Dashboard" src="https://github.com/user-attachments/assets/a782183a-1717-4dce-8cc7-5488051aa2af" width='70%' />
-    <br><br>
-    <img alt="Catalogue login" src="https://github.com/user-attachments/assets/3a47fbcc-7cb1-4b44-991d-3987e9cf490f" width='70%' />
-    <br><br>
-    <img alt="Companies edditing panel" src="https://github.com/user-attachments/assets/bb8f74f9-dc63-4c60-97e4-04071d55dd4e" width='70%' />
-    <br><br>
-    <img alt="Double verification before deleting a company" src="https://github.com/user-attachments/assets/f0bb4443-5daf-414f-8203-69f555008843" width='70%' />
-    <br><br>
-    <img alt="Images for realighnment/deletion/addition" src="https://github.com/user-attachments/assets/9810c3d0-1de8-431d-ab57-ad483d7a353b" width='70%' />
-    <br><br>
-    <img alt="Recycle Bin" src="https://github.com/user-attachments/assets/f326c413-2d18-476b-ad6f-d552d41f7f34" width='70%' />
-  </p>
-
-
+Built by Sanika Gaikwad with AI guidance.
