@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { getPublicCatalogueImageUrl } from "@/catalogue/cloudinary";
 
 type ImageLightboxProps = {
   images: string[];
@@ -59,7 +60,7 @@ export function ImageLightbox({
 
   if (selectedIndex === null || images.length === 0) return null;
 
-  const selectedImage = images[selectedIndex];
+  const selectedImage = getPublicCatalogueImageUrl(images[selectedIndex]);
   const context = inquiryContext ? ` (${inquiryContext})` : "";
   const message = `Hi, I am interested in this ${inquiryLabel} design${context}: ${selectedImage}`;
   const whatsappNumber = (
@@ -169,7 +170,10 @@ export function ImageLightbox({
   } as CSSProperties;
 
   return (
-    <div className="lightbox">
+    <div
+      className="lightbox"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <button
         type="button"
         onClick={() => onSelect(null)}
@@ -201,10 +205,11 @@ export function ImageLightbox({
           {[previousIndex, selectedIndex, nextIndex].map((imageIndex, slot) => (
             <div className="lightbox-slide" key={`${imageIndex}-${slot}`}>
               <img
-                src={images[imageIndex]}
+                src={getPublicCatalogueImageUrl(images[imageIndex])}
                 alt={`${title} design ${imageIndex + 1}`}
                 className="lightbox-image"
                 draggable={false}
+                onContextMenu={(event) => event.preventDefault()}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}

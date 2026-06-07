@@ -82,8 +82,17 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=
+NEXT_PUBLIC_CLOUDINARY_WATERMARK_TEXT=Varsha Cushions
+NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH=0.48
 NEXT_PUBLIC_WHATSAPP_NUMBER=
 ```
+
+Public catalogue views add the watermark through a Cloudinary URL
+transformation. Original Cloudinary uploads remain unchanged, and admin views
+continue to show the original images.
+
+`NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH` controls the watermark width relative
+to each image. For example, `0.48` makes it 48% of every image's width.
 
 Set `NEXT_PUBLIC_WHATSAPP_NUMBER` to the business WhatsApp number with the
 country code and without `+`, spaces, or dashes. Example: `919876543210`.

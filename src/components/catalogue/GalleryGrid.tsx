@@ -1,5 +1,7 @@
 "use client";
 
+import { getPublicCatalogueImageUrl } from "@/catalogue/cloudinary";
+
 type GalleryGridProps = {
   images: string[];
   title: string;
@@ -23,11 +25,14 @@ export function GalleryGrid({ images, title, onImageClick }: GalleryGridProps) {
           key={`${image}-${index}`}
           className="gallery-tile"
           onClick={() => onImageClick(index)}
+          onContextMenu={(event) => event.preventDefault()}
         >
           <img
-            src={image}
+            src={getPublicCatalogueImageUrl(image)}
             alt={`${title} design ${index + 1}`}
             className="gallery-image"
+            draggable={false}
+            onContextMenu={(event) => event.preventDefault()}
           />
         </button>
       ))}
