@@ -119,7 +119,9 @@ export function ImageLightbox({
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         />
+      </div>
 
+      <div className="lightbox-inquiry-bar">
         <a
           href={whatsappUrl}
           target="_blank"
