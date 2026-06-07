@@ -31,6 +31,7 @@ Customers browse all designs directly without choosing a company.
 - Desktop arrow and keyboard navigation
 - Mobile swipe navigation
 - Finger-following mobile slide animation
+- Mobile pinch-to-zoom up to 4x with one-finger panning
 - Previous and next image preloading within the swipe track
 - WhatsApp inquiry button for every design
 - Product type, company name, and image link included in inquiries

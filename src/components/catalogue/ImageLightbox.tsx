@@ -18,6 +18,18 @@ type ImageLightboxProps = {
   onSelect: (index: number | null) => void;
 };
 
+function getTouchDistance(
+  touches: TouchEvent<HTMLImageElement>["touches"]
+) {
+  const deltaX = touches[0].clientX - touches[1].clientX;
+  const deltaY = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(deltaX, deltaY);
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
 export function ImageLightbox({
   images,
   selectedIndex,
@@ -29,6 +41,11 @@ export function ImageLightbox({
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const touchWidth = useRef(0);
+  const pinchStartDistance = useRef<number | null>(null);
+  const pinchStartScale = useRef(1);
+  const panStartX = useRef<number | null>(null);
+  const panStartY = useRef<number | null>(null);
+  const panStartOffset = useRef({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState(0);
   const [trackPosition, setTrackPosition] = useState(-33.333333);
   const [isDragging, setIsDragging] = useState(false);
@@ -36,20 +53,33 @@ export function ImageLightbox({
   const [pendingDirection, setPendingDirection] = useState<
     "next" | "previous" | null
   >(null);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
+
+  const resetZoom = () => {
+    setZoomScale(1);
+    setZoomOffset({ x: 0, y: 0 });
+    pinchStartDistance.current = null;
+    panStartX.current = null;
+    panStartY.current = null;
+  };
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (selectedIndex === null || images.length === 0) return;
 
       if (event.key === "Escape") {
+        resetZoom();
         onSelect(null);
       }
 
       if (event.key === "ArrowRight") {
+        resetZoom();
         onSelect((selectedIndex + 1) % images.length);
       }
 
       if (event.key === "ArrowLeft") {
+        resetZoom();
         onSelect((selectedIndex - 1 + images.length) % images.length);
       }
     };
@@ -73,11 +103,32 @@ export function ImageLightbox({
   const handleTouchStart = (event: TouchEvent<HTMLImageElement>) => {
     if (
       !window.matchMedia("(max-width: 720px)").matches ||
-      isSettling ||
-      images.length < 2
+      isSettling
     ) {
       return;
     }
+
+    if (event.touches.length === 2) {
+      event.preventDefault();
+      setIsDragging(false);
+      setDragOffset(0);
+      touchStartX.current = null;
+      touchStartY.current = null;
+      pinchStartDistance.current = getTouchDistance(event.touches);
+      pinchStartScale.current = zoomScale;
+      return;
+    }
+
+    if (event.touches.length !== 1) return;
+
+    if (zoomScale > 1) {
+      panStartX.current = event.touches[0].clientX;
+      panStartY.current = event.touches[0].clientY;
+      panStartOffset.current = zoomOffset;
+      return;
+    }
+
+    if (images.length < 2) return;
 
     touchStartX.current = event.touches[0].clientX;
     touchStartY.current = event.touches[0].clientY;
@@ -86,6 +137,52 @@ export function ImageLightbox({
   };
 
   const handleTouchMove = (event: TouchEvent<HTMLImageElement>) => {
+    if (
+      event.touches.length === 2 &&
+      pinchStartDistance.current !== null
+    ) {
+      event.preventDefault();
+      const nextScale = clamp(
+        pinchStartScale.current *
+          (getTouchDistance(event.touches) / pinchStartDistance.current),
+        1,
+        4
+      );
+
+      setZoomScale(nextScale);
+      if (nextScale === 1) setZoomOffset({ x: 0, y: 0 });
+      return;
+    }
+
+    if (
+      event.touches.length === 1 &&
+      zoomScale > 1 &&
+      panStartX.current !== null &&
+      panStartY.current !== null
+    ) {
+      event.preventDefault();
+      const maxX = (event.currentTarget.clientWidth * (zoomScale - 1)) / 2;
+      const maxY = (event.currentTarget.clientHeight * (zoomScale - 1)) / 2;
+
+      setZoomOffset({
+        x: clamp(
+          panStartOffset.current.x +
+            event.touches[0].clientX -
+            panStartX.current,
+          -maxX,
+          maxX
+        ),
+        y: clamp(
+          panStartOffset.current.y +
+            event.touches[0].clientY -
+            panStartY.current,
+          -maxY,
+          maxY
+        ),
+      });
+      return;
+    }
+
     if (
       !isDragging ||
       touchStartX.current === null ||
@@ -103,6 +200,22 @@ export function ImageLightbox({
   };
 
   const handleTouchEnd = (event: TouchEvent<HTMLImageElement>) => {
+    if (pinchStartDistance.current !== null) {
+      pinchStartDistance.current = null;
+
+      if (zoomScale < 1.03) {
+        setZoomScale(1);
+        setZoomOffset({ x: 0, y: 0 });
+      }
+      return;
+    }
+
+    if (panStartX.current !== null || panStartY.current !== null) {
+      panStartX.current = null;
+      panStartY.current = null;
+      return;
+    }
+
     if (
       touchStartX.current === null ||
       touchStartY.current === null ||
@@ -148,10 +261,12 @@ export function ImageLightbox({
     if (!isSettling) return;
 
     if (pendingDirection === "next") {
+      resetZoom();
       onSelect((selectedIndex + 1) % images.length);
     }
 
     if (pendingDirection === "previous") {
+      resetZoom();
       onSelect((selectedIndex - 1 + images.length) % images.length);
     }
 
@@ -168,6 +283,9 @@ export function ImageLightbox({
     "--lightbox-track-position": `${trackPosition}%`,
     "--lightbox-drag-offset": `${dragOffset}px`,
   } as CSSProperties;
+  const zoomStyle = {
+    transform: `translate3d(${zoomOffset.x}px, ${zoomOffset.y}px, 0) scale(${zoomScale})`,
+  };
 
   return (
     <div
@@ -176,7 +294,10 @@ export function ImageLightbox({
     >
       <button
         type="button"
-        onClick={() => onSelect(null)}
+        onClick={() => {
+          resetZoom();
+          onSelect(null);
+        }}
         className="lightbox-control lightbox-close"
         aria-label="Close image viewer"
       >
@@ -185,9 +306,10 @@ export function ImageLightbox({
 
       <button
         type="button"
-        onClick={() =>
+        onClick={() => {
+          resetZoom();
           onSelect((selectedIndex - 1 + images.length) % images.length)
-        }
+        }}
         className="lightbox-control lightbox-prev"
         aria-label="Previous image"
       >
@@ -207,7 +329,12 @@ export function ImageLightbox({
               <img
                 src={getPublicCatalogueImageUrl(images[imageIndex])}
                 alt={`${title} design ${imageIndex + 1}`}
-                className="lightbox-image"
+                className={`lightbox-image ${
+                  slot === 1 && zoomScale > 1
+                    ? "lightbox-image-zoomed"
+                    : ""
+                }`}
+                style={slot === 1 ? zoomStyle : undefined}
                 draggable={false}
                 onContextMenu={(event) => event.preventDefault()}
                 onTouchStart={handleTouchStart}
@@ -232,7 +359,10 @@ export function ImageLightbox({
 
       <button
         type="button"
-        onClick={() => onSelect((selectedIndex + 1) % images.length)}
+        onClick={() => {
+          resetZoom();
+          onSelect((selectedIndex + 1) % images.length);
+        }}
         className="lightbox-control lightbox-next"
         aria-label="Next image"
       >

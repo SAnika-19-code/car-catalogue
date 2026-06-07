@@ -912,7 +912,14 @@ img {
   }
 
   .lightbox-image {
-    touch-action: pan-y;
+    touch-action: none;
+    transform-origin: center;
+    transition: none;
+    will-change: transform;
+  }
+
+  .lightbox-image-zoomed {
+    cursor: grab;
   }
 
   .lightbox-track {
