@@ -9,25 +9,109 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  writeBatch,
 } from "firebase/firestore";
 import {
   DndContext,
+  PointerSensor,
   type DragEndEvent,
   closestCenter,
+  useSensor,
+  useSensors,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
   useSortable,
   rectSortingStrategy,
+  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { db } from "@/firebase/config";
+import { auth, db } from "@/firebase/config";
 import type {
   CatalogueCategory,
   CompanyDocument,
   GalleryDocument,
 } from "@/catalogue/categories";
+
+type UploadStatus = "uploading" | "saving" | "complete" | "error";
+
+type UploadProgress = {
+  status: UploadStatus;
+  loadedBytes: number;
+  totalBytes: number;
+  completedFiles: number;
+  totalFiles: number;
+  bytesPerSecond: number;
+  error?: string;
+};
+
+function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+
+  const units = ["B", "KB", "MB", "GB"];
+  const unitIndex = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1
+  );
+  const value = bytes / 1024 ** unitIndex;
+
+  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+function uploadCloudinaryFile({
+  file,
+  endpoint,
+  uploadPreset,
+  onProgress,
+}: {
+  file: File;
+  endpoint: string;
+  uploadPreset: string;
+  onProgress: (loadedBytes: number) => void;
+}) {
+  return new Promise<string>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    const form = new FormData();
+
+    form.append("file", file);
+    form.append("upload_preset", uploadPreset);
+
+    request.upload.addEventListener("progress", (event) => {
+      if (event.lengthComputable) onProgress(event.loaded);
+    });
+
+    request.addEventListener("load", () => {
+      try {
+        const data = JSON.parse(request.responseText) as {
+          secure_url?: string;
+          error?: { message?: string };
+        };
+
+        if (
+          request.status >= 200 &&
+          request.status < 300 &&
+          data.secure_url
+        ) {
+          onProgress(file.size);
+          resolve(data.secure_url);
+          return;
+        }
+
+        reject(new Error(data.error?.message || "Cloudinary upload failed."));
+      } catch {
+        reject(new Error("Cloudinary returned an invalid response."));
+      }
+    });
+
+    request.addEventListener("error", () => {
+      reject(new Error("Network error while uploading to Cloudinary."));
+    });
+
+    request.open("POST", endpoint);
+    request.send(form);
+  });
+}
 
 type SortableImageProps = {
   image: string;
@@ -54,20 +138,12 @@ function SortableImage({
         transform: CSS.Transform.toString(transform),
         transition,
       }}
+      {...attributes}
+      {...listeners}
       className={`relative overflow-hidden rounded-lg border bg-[#0b1020] ${
         selected ? "border-red-400" : "border-[#d0ab4f]/25"
-      }`}
+      } admin-sortable-image`}
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="absolute right-1 top-1 z-10 rounded bg-black/70 px-2 py-1 text-xs text-white"
-        aria-label={`Move design ${index + 1}`}
-      >
-        Move
-      </button>
-
       <button type="button" onClick={() => onView(image)} className="w-full">
         <img
           src={image}
@@ -82,6 +158,50 @@ function SortableImage({
         className="w-full bg-[#1d2a4b] py-1 text-xs font-semibold text-white"
       >
         {selected ? "Selected" : "Select"}
+      </button>
+    </div>
+  );
+}
+
+type SortableCompanyProps = {
+  company: CompanyDocument;
+  categorySlug: string;
+  onDelete: (company: CompanyDocument) => void;
+};
+
+function SortableCompany({
+  company,
+  categorySlug,
+  onDelete,
+}: SortableCompanyProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: company.id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      {...attributes}
+      {...listeners}
+      className="admin-company-row"
+    >
+      <a
+        href={`/admin/categories/${categorySlug}/${company.id}`}
+        className="admin-company-link"
+      >
+        <span>{company.name}</span>
+        <small>{company.images.length} designs</small>
+      </a>
+
+      <button
+        type="button"
+        onClick={() => onDelete(company)}
+        className="admin-company-delete"
+      >
+        Delete
       </button>
     </div>
   );
@@ -111,6 +231,15 @@ export function AdminGalleryManager({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [uploadProgress, setUploadProgress] =
+    useState<UploadProgress | null>(null);
+  const [uploadExpanded, setUploadExpanded] = useState(false);
+  const [emptyingBin, setEmptyingBin] = useState(false);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const loadGallery = useCallback(() => {
     getDoc(documentRef)
@@ -120,6 +249,7 @@ export function AdminGalleryManager({
           name: data?.name ?? category.title,
           images: data?.images ?? [],
           trash: data?.trash ?? [],
+          order: data?.order,
         });
         setNewName(data?.name ?? category.title);
       })
@@ -134,7 +264,16 @@ export function AdminGalleryManager({
   const trash = gallery?.trash ?? [];
 
   const saveGallery = async (nextGallery: GalleryDocument) => {
-    await setDoc(documentRef, nextGallery, { merge: true });
+    const firestoreGallery: GalleryDocument = {
+      name: nextGallery.name,
+      images: nextGallery.images,
+      trash: nextGallery.trash ?? [],
+      ...(nextGallery.order !== undefined
+        ? { order: nextGallery.order }
+        : {}),
+    };
+
+    await setDoc(documentRef, firestoreGallery, { merge: true });
     setGallery(nextGallery);
   };
 
@@ -149,32 +288,96 @@ export function AdminGalleryManager({
       return;
     }
 
-    const uploadedUrls = await Promise.all(
-      files.map(async (file) => {
-        const form = new FormData();
-        form.append("file", file);
-        form.append("upload_preset", uploadPreset);
+    const totalBytes = files.reduce((total, file) => total + file.size, 0);
+    const loadedByFile = files.map(() => 0);
+    const startedAt = performance.now();
+    let completedFiles = 0;
 
-        const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-          {
-            method: "POST",
-            body: form,
-          }
-        );
+    const updateProgress = (
+      status: UploadStatus,
+      error?: string
+    ) => {
+      const loadedBytes = loadedByFile.reduce(
+        (total, loaded) => total + loaded,
+        0
+      );
+      const elapsedSeconds = Math.max(
+        (performance.now() - startedAt) / 1000,
+        0.1
+      );
 
-        const data = (await response.json()) as { secure_url?: string };
-        return data.secure_url;
-      })
-    );
+      setUploadProgress({
+        status,
+        loadedBytes,
+        totalBytes,
+        completedFiles,
+        totalFiles: files.length,
+        bytesPerSecond: loadedBytes / elapsedSeconds,
+        error,
+      });
+    };
 
-    const nextImages = uploadedUrls.filter((url): url is string => Boolean(url));
-    await saveGallery({
-      ...gallery,
-      images: [...images, ...nextImages],
+    setUploadProgress({
+      status: "uploading",
+      loadedBytes: 0,
+      totalBytes,
+      completedFiles: 0,
+      totalFiles: files.length,
+      bytesPerSecond: 0,
     });
-    setFiles([]);
+    setUploadExpanded(true);
+
+    try {
+      const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+      const uploadedUrls = await Promise.all(
+        files.map(async (file, index) => {
+          const uploadedUrl = await uploadCloudinaryFile({
+            file,
+            endpoint,
+            uploadPreset,
+            onProgress: (loadedBytes) => {
+              loadedByFile[index] = Math.min(loadedBytes, file.size);
+              updateProgress("uploading");
+            },
+          });
+
+          loadedByFile[index] = file.size;
+          completedFiles += 1;
+          updateProgress("uploading");
+          return uploadedUrl;
+        })
+      );
+
+      updateProgress("saving");
+      await saveGallery({
+        ...gallery,
+        images: [...images, ...uploadedUrls],
+      });
+      setFiles([]);
+      updateProgress("complete");
+    } catch (error) {
+      updateProgress(
+        "error",
+        error instanceof Error ? error.message : "Upload failed."
+      );
+    }
   };
+
+  useEffect(() => {
+    if (uploadProgress?.status !== "complete") return;
+
+    const closeTimer = window.setTimeout(() => {
+      setUploadExpanded(false);
+    }, 1600);
+    const removeTimer = window.setTimeout(() => {
+      setUploadProgress(null);
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(closeTimer);
+      window.clearTimeout(removeTimer);
+    };
+  }, [uploadProgress?.status]);
 
   const toggleSelect = (image: string) => {
     setSelectedImages((current) =>
@@ -187,15 +390,27 @@ export function AdminGalleryManager({
   const bulkDelete = async () => {
     if (!gallery || selectedImages.length === 0) return;
 
+    const imageCount = selectedImages.length;
+    const confirmed = confirm(
+      `Move ${imageCount} selected photo${imageCount === 1 ? "" : "s"} to the recycle bin?\n\nThe original ${imageCount === 1 ? "photo" : "photos"} will remain in Cloudinary and can be restored later.`
+    );
+    if (!confirmed) return;
+
     const remaining = images.filter((image) => !selectedImages.includes(image));
     const moved = images.filter((image) => selectedImages.includes(image));
 
-    await saveGallery({
-      ...gallery,
-      images: remaining,
-      trash: [...trash, ...moved],
-    });
-    setSelectedImages([]);
+    try {
+      await saveGallery({
+        ...gallery,
+        images: remaining,
+        trash: [...trash, ...moved],
+      });
+      setSelectedImages([]);
+    } catch {
+      alert(
+        `The selected photo${imageCount === 1 ? "" : "s"} could not be moved to the recycle bin.`
+      );
+    }
   };
 
   const restoreImage = async (image: string) => {
@@ -209,20 +424,66 @@ export function AdminGalleryManager({
   };
 
   const emptyRecycleBin = async () => {
-    if (!gallery) return;
+    if (!gallery || trash.length === 0 || emptyingBin) return;
 
     const first = confirm(
-      "This will permanently remove every image from the recycle bin."
+      "This will permanently remove every image from the recycle bin and Cloudinary."
     );
     if (!first) return;
 
     const second = confirm("Are you sure?");
     if (!second) return;
 
-    await saveGallery({
-      ...gallery,
-      trash: [],
-    });
+    const user = auth.currentUser;
+    if (!user) {
+      alert("Your admin session has expired. Please log in again.");
+      return;
+    }
+
+    setEmptyingBin(true);
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch("/api/cloudinary/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ urls: trash }),
+      });
+      const result = (await response.json()) as {
+        error?: string;
+        deletedUrls?: string[];
+        failed?: Array<{ url: string; error: string }>;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.error || "Cloudinary deletion failed.");
+      }
+
+      const deletedUrls = new Set(result.deletedUrls ?? []);
+      if (deletedUrls.size > 0) {
+        await saveGallery({
+          ...gallery,
+          trash: trash.filter((image) => !deletedUrls.has(image)),
+        });
+      }
+
+      if (result.failed?.length) {
+        alert(
+          `${result.failed.length} photo${result.failed.length === 1 ? "" : "s"} could not be deleted and will remain in the recycle bin.\n\n${result.failed[0].error}`
+        );
+      }
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "The recycle bin could not be emptied."
+      );
+    } finally {
+      setEmptyingBin(false);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -266,13 +527,27 @@ export function AdminGalleryManager({
     const ok = confirm(`Rename "${gallery.name}" to "${trimmedName}"?`);
     if (!ok) return;
 
-    await setDoc(doc(db, category.collection, newId), {
-      ...gallery,
+    const renamedGallery: GalleryDocument = {
       name: trimmedName,
-    });
+      images: gallery.images,
+      trash: gallery.trash ?? [],
+      ...(gallery.order !== undefined ? { order: gallery.order } : {}),
+    };
+
+    await setDoc(doc(db, category.collection, newId), renamedGallery);
     await deleteDoc(doc(db, category.collection, companyId));
     router.replace(`/admin/categories/${category.slug}/${newId}`);
   };
+
+  const uploadIsActive =
+    uploadProgress?.status === "uploading" ||
+    uploadProgress?.status === "saving";
+  const uploadPercent = uploadProgress
+    ? Math.round(
+        (uploadProgress.loadedBytes / Math.max(uploadProgress.totalBytes, 1)) *
+          100
+      )
+    : 0;
 
   if (loading || !gallery) {
     return <div className="text-white/65">Loading...</div>;
@@ -310,6 +585,7 @@ export function AdminGalleryManager({
         <input
           type="file"
           multiple
+          disabled={uploadIsActive}
           onChange={(event) =>
             setFiles(Array.from(event.target.files ?? []))
           }
@@ -319,21 +595,84 @@ export function AdminGalleryManager({
         <button
           type="button"
           onClick={uploadImages}
-          className="rounded-lg bg-[#d0ab4f] px-3 py-2 font-semibold text-[#10182f]"
+          disabled={uploadIsActive || files.length === 0}
+          className="rounded-lg bg-[#d0ab4f] px-3 py-2 font-semibold text-[#10182f] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Upload
+          {uploadIsActive ? "Uploading..." : `Upload${files.length ? ` (${files.length})` : ""}`}
         </button>
 
         <button
           type="button"
           onClick={bulkDelete}
-          className="rounded-lg bg-red-600 px-3 py-2 font-semibold text-white"
+          disabled={selectedImages.length === 0}
+          className="rounded-lg bg-red-600 px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           Delete Selected
         </button>
       </section>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      {uploadProgress && (
+        <section className="admin-upload-dropdown" aria-live="polite">
+          <button
+            type="button"
+            className={`admin-upload-summary admin-upload-${uploadProgress.status}`}
+            onClick={() => setUploadExpanded((current) => !current)}
+            aria-expanded={uploadExpanded}
+          >
+            <span>
+              {uploadProgress.status === "uploading" && "Uploading photos"}
+              {uploadProgress.status === "saving" && "Saving gallery"}
+              {uploadProgress.status === "complete" && "Upload complete"}
+              {uploadProgress.status === "error" && "Upload failed"}
+            </span>
+            <strong>{Math.min(uploadPercent, 100)}%</strong>
+            <span className="admin-upload-chevron" aria-hidden>
+              {uploadExpanded ? "^" : "v"}
+            </span>
+          </button>
+
+          {uploadExpanded && (
+            <div className={`admin-upload-panel admin-upload-${uploadProgress.status}`}>
+              <p>
+                {uploadProgress.status === "uploading" &&
+                  `${uploadProgress.completedFiles} of ${uploadProgress.totalFiles} files completed`}
+                {uploadProgress.status === "saving" &&
+                  "Updating the gallery in Firebase..."}
+                {uploadProgress.status === "complete" &&
+                  `${uploadProgress.totalFiles} files uploaded successfully`}
+                {uploadProgress.status === "error" && uploadProgress.error}
+              </p>
+
+              <div
+                className="admin-upload-track"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.min(uploadPercent, 100)}
+              >
+                <span
+                  className="admin-upload-fill"
+                  style={{ width: `${Math.min(uploadPercent, 100)}%` }}
+                />
+              </div>
+
+              <div className="admin-upload-details">
+                <span>
+                  {formatBytes(uploadProgress.loadedBytes)} of{" "}
+                  {formatBytes(uploadProgress.totalBytes)}
+                </span>
+                <span>{formatBytes(uploadProgress.bytesPerSecond)}/s</span>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <DndContext
+        sensors={dragSensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
         <SortableContext items={images} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {images.map((image, index) => (
@@ -358,9 +697,10 @@ export function AdminGalleryManager({
             <button
               type="button"
               onClick={emptyRecycleBin}
-              className="rounded-lg bg-red-700 px-3 py-1 text-xs text-white"
+              disabled={emptyingBin}
+              className="rounded-lg bg-red-700 px-3 py-1 text-xs text-white disabled:cursor-wait disabled:opacity-60"
             >
-              Empty Bin
+              {emptyingBin ? "Deleting..." : "Empty Bin"}
             </button>
           </div>
 
@@ -416,20 +756,34 @@ export function AdminCompanyList({ category }: AdminCompanyListProps) {
   const [companies, setCompanies] = useState<CompanyDocument[]>([]);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
+  const companyDragSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   const loadCompanies = useCallback(() => {
     getDocs(collection(db, category.collection))
       .then((snapshot) => {
         setCompanies(
-          snapshot.docs.map((item) => {
-            const data = item.data() as Partial<CompanyDocument>;
-            return {
-              id: item.id,
-              name: data.name ?? item.id,
-              images: data.images ?? [],
-              trash: data.trash ?? [],
-            };
-          })
+          snapshot.docs
+            .map((item) => {
+              const data = item.data() as Partial<CompanyDocument>;
+              return {
+                id: item.id,
+                name: data.name ?? item.id,
+                images: data.images ?? [],
+                trash: data.trash ?? [],
+                order: data.order,
+              };
+            })
+            .sort(
+              (first, second) =>
+                (first.order ?? Number.MAX_SAFE_INTEGER) -
+                  (second.order ?? Number.MAX_SAFE_INTEGER) ||
+                first.name.localeCompare(second.name)
+            )
+            .map((company, order) => ({ ...company, order }))
         );
       })
       .finally(() => setLoading(false));
@@ -445,14 +799,58 @@ export function AdminCompanyList({ category }: AdminCompanyListProps) {
 
     const id = trimmedName.toLowerCase().replace(/\s+/g, "-");
 
-    await setDoc(doc(db, category.collection, id), {
+    const batch = writeBatch(db);
+    companies.forEach((company, order) => {
+      batch.set(
+        doc(db, category.collection, company.id),
+        { order },
+        { merge: true }
+      );
+    });
+    batch.set(doc(db, category.collection, id), {
       name: trimmedName,
       images: [],
       trash: [],
+      order: companies.length,
     });
+    await batch.commit();
 
     setName("");
     loadCompanies();
+  };
+
+  const handleCompanyDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = companies.findIndex(
+      (company) => company.id === String(active.id)
+    );
+    const newIndex = companies.findIndex(
+      (company) => company.id === String(over.id)
+    );
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reorderedCompanies = arrayMove(companies, oldIndex, newIndex).map(
+      (company, order) => ({ ...company, order })
+    );
+
+    setCompanies(reorderedCompanies);
+
+    try {
+      const batch = writeBatch(db);
+      reorderedCompanies.forEach((company) => {
+        batch.set(
+          doc(db, category.collection, company.id),
+          { order: company.order },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+    } catch {
+      alert("Company order could not be saved.");
+      loadCompanies();
+    }
   };
 
   const deleteCompany = async (company: CompanyDocument) => {
@@ -490,29 +888,27 @@ export function AdminCompanyList({ category }: AdminCompanyListProps) {
       {loading ? (
         <div className="text-white/65">Loading...</div>
       ) : (
-        <div className="space-y-3">
-          {companies.map((company) => (
-            <div
-              key={company.id}
-              className="flex items-center justify-between rounded-lg border border-[#d0ab4f]/20 bg-white/10 p-4"
-            >
-              <a
-                href={`/admin/categories/${category.slug}/${company.id}`}
-                className="capitalize hover:text-[#d0ab4f]"
-              >
-                {company.name}
-              </a>
-
-              <button
-                type="button"
-                onClick={() => deleteCompany(company)}
-                className="font-semibold text-red-300"
-              >
-                Delete
-              </button>
+        <DndContext
+          sensors={companyDragSensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleCompanyDragEnd}
+        >
+          <SortableContext
+            items={companies.map((company) => company.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="admin-company-list">
+              {companies.map((company) => (
+                <SortableCompany
+                  key={company.id}
+                  company={company}
+                  categorySlug={category.slug}
+                  onDelete={deleteCompany}
+                />
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   );

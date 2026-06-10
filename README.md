@@ -52,11 +52,17 @@ Customers browse all designs directly without choosing a company.
 - Dashboard totals across all catalogue categories
 - Category-based gallery management
 - Create, rename, and delete companies
+- Drag company rows directly to reorder them, with persistent Firestore order
 - Upload multiple images through Cloudinary
-- Drag-and-drop image ordering
+- Auto-closing upload status dropdown with percentage, file count, transferred
+  size, and live upload speed
+- Drag image tiles directly to reorder them
 - Bulk image selection and deletion
 - Recycle bin with image restoration
-- Permanent recycle-bin clearing with confirmation
+- Soft-delete confirmation with error-only failure messaging
+- Permanent recycle-bin clearing from both Cloudinary and Firestore
+- Permanent deletion also supports photos uploaded before this feature was added
+- Firebase-authenticated server endpoint for protected Cloudinary deletion
 - Clean original images in admin views without public watermarks
 - Legacy seat-cover admin links redirect to the new category routes
 
@@ -101,6 +107,7 @@ Each company document contains:
 name: string
 images: string[]
 trash: string[]
+order: number
 ```
 
 Direct galleries use documents inside the `catalogues` collection:
@@ -111,7 +118,8 @@ catalogues/floor-lamination
 ```
 
 Each direct-gallery document contains the same `name`, `images`, and `trash`
-fields.
+fields. The `order` field is used by company-wise collections and determines
+the company sequence shown in both admin and customer views.
 
 ## Firestore Security Rules
 
@@ -162,6 +170,23 @@ Original uploads are not modified.
 If Cloudinary Strict Transformations are enabled, allow the watermark
 transformation used by the application.
 
+### Recycle-bin deletion
+
+Deleting a photo from a gallery first moves its original Cloudinary URL into
+the Firestore recycle bin. This keeps the asset available for restoration.
+
+When **Empty Bin** is confirmed:
+
+1. The server verifies the current Firebase admin login.
+2. The Cloudinary public ID is recovered from each stored image URL.
+3. The original asset and its cached transformations are deleted from
+   Cloudinary.
+4. Only successfully deleted URLs are removed from the Firestore recycle bin.
+
+This URL-based lookup means photos uploaded before permanent Cloudinary
+deletion was introduced are supported without re-uploading or migrating them.
+Any failed deletion remains in the recycle bin so it can be retried safely.
+
 ## Environment Variables
 
 Create `.env.local`:
@@ -180,6 +205,10 @@ NEXT_PUBLIC_CLOUDINARY_WATERMARK_TEXT=Varsha Cushions
 NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH=0.48
 
 NEXT_PUBLIC_WHATSAPP_NUMBER=919766222351
+
+# Private server-only Cloudinary deletion credentials
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
 
 `NEXT_PUBLIC_CLOUDINARY_WATERMARK_WIDTH` is a proportion of the image width.
@@ -188,7 +217,14 @@ For example, `0.48` means 48%.
 The WhatsApp number must include the country code without `+`, spaces, or
 dashes.
 
-Add the same values to the Vercel project before deploying.
+The deletion endpoint reuses `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, so a second
+`CLOUDINARY_CLOUD_NAME` variable is not required. Add
+`CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` as private server variables in
+both `.env.local` and the Vercel project, then redeploy.
+
+Never prefix the Cloudinary API secret with `NEXT_PUBLIC_` and never commit it
+to Git. If a secret is pasted into a message or otherwise exposed, rotate it in
+Cloudinary before using the replacement value.
 
 ## Local Development
 

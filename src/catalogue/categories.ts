@@ -52,6 +52,7 @@ export type GalleryDocument = {
   name: string;
   images: string[];
   trash?: string[];
+  order?: number;
 };
 
 export type CompanyDocument = GalleryDocument & {

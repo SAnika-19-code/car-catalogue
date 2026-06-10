@@ -25,15 +25,23 @@ export function GroupedCataloguePage({ category }: GroupedCataloguePageProps) {
         if (!active) return;
 
         setCompanies(
-          snapshot.docs.map((item) => {
-            const data = item.data() as Partial<CompanyDocument>;
-            return {
-              id: item.id,
-              name: data.name ?? item.id,
-              images: data.images ?? [],
-              trash: data.trash ?? [],
-            };
-          })
+          snapshot.docs
+            .map((item) => {
+              const data = item.data() as Partial<CompanyDocument>;
+              return {
+                id: item.id,
+                name: data.name ?? item.id,
+                images: data.images ?? [],
+                trash: data.trash ?? [],
+                order: data.order,
+              };
+            })
+            .sort(
+              (first, second) =>
+                (first.order ?? Number.MAX_SAFE_INTEGER) -
+                  (second.order ?? Number.MAX_SAFE_INTEGER) ||
+                first.name.localeCompare(second.name)
+            )
         );
       })
       .finally(() => {
