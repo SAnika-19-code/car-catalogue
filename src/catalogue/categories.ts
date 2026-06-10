@@ -7,6 +7,7 @@ export type CatalogueCategory = {
   description: string;
   collection: string;
   mode: CatalogueMode;
+  legacyGroupedCollection?: string;
 };
 
 export const catalogueCategories = [
@@ -17,6 +18,15 @@ export const catalogueCategories = [
     description: "Premium seat cover designs grouped by company.",
     collection: "seat-covers",
     mode: "grouped",
+  },
+  {
+    slug: "roof-design",
+    title: "Roof Design",
+    inquiryLabel: "roof",
+    description: "Browse all roof designs in one gallery.",
+    collection: "roof-design",
+    mode: "flat",
+    legacyGroupedCollection: "roof-design",
   },
   {
     slug: "steering-covers",
@@ -33,14 +43,6 @@ export const catalogueCategories = [
     description: "Browse floor lamination designs in one gallery.",
     collection: "floor-lamination",
     mode: "flat",
-  },
-  {
-    slug: "roof-design",
-    title: "Roof Design",
-    inquiryLabel: "roof",
-    description: "Roof design catalogue grouped by company.",
-    collection: "roof-design",
-    mode: "grouped",
   },
 ] as const satisfies CatalogueCategory[];
 

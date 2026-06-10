@@ -241,23 +241,72 @@ export function AdminGalleryManager({
     })
   );
 
-  const loadGallery = useCallback(() => {
-    getDoc(documentRef)
-      .then((snapshot) => {
-        const data = snapshot.data() as Partial<GalleryDocument> | undefined;
+  const loadGallery = useCallback(async () => {
+    try {
+      const snapshot = await getDoc(documentRef);
+
+      if (snapshot.exists()) {
+        const data = snapshot.data() as Partial<GalleryDocument>;
         setGallery({
-          name: data?.name ?? category.title,
-          images: data?.images ?? [],
-          trash: data?.trash ?? [],
-          order: data?.order,
+          name: data.name ?? category.title,
+          images: data.images ?? [],
+          trash: data.trash ?? [],
+          order: data.order,
         });
-        setNewName(data?.name ?? category.title);
-      })
-      .finally(() => setLoading(false));
-  }, [category.title, documentRef]);
+        setNewName(data.name ?? category.title);
+        return;
+      }
+
+      if (category.mode === "flat" && category.legacyGroupedCollection) {
+        const legacySnapshot = await getDocs(
+          collection(db, category.legacyGroupedCollection)
+        );
+        const legacyGalleries = legacySnapshot.docs
+          .map((item) => {
+            const data = item.data() as Partial<GalleryDocument>;
+            return {
+              name: data.name ?? item.id,
+              images: data.images ?? [],
+              trash: data.trash ?? [],
+              order: data.order,
+            };
+          })
+          .sort(
+            (first, second) =>
+              (first.order ?? Number.MAX_SAFE_INTEGER) -
+                (second.order ?? Number.MAX_SAFE_INTEGER) ||
+              first.name.localeCompare(second.name)
+          );
+        const migratedGallery: GalleryDocument = {
+          name: category.title,
+          images: legacyGalleries.flatMap((item) => item.images),
+          trash: legacyGalleries.flatMap((item) => item.trash),
+        };
+
+        await setDoc(documentRef, migratedGallery, { merge: true });
+        setGallery(migratedGallery);
+        setNewName(category.title);
+        return;
+      }
+
+      setGallery({
+        name: category.title,
+        images: [],
+        trash: [],
+      });
+      setNewName(category.title);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    category.legacyGroupedCollection,
+    category.mode,
+    category.title,
+    documentRef,
+  ]);
 
   useEffect(() => {
-    loadGallery();
+    void loadGallery();
   }, [loadGallery]);
 
   const images = gallery?.images ?? [];

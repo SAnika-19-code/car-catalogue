@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import type { CatalogueCategory, GalleryDocument } from "@/catalogue/categories";
 import { GalleryGrid } from "./GalleryGrid";
@@ -19,25 +19,74 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
   useEffect(() => {
     let active = true;
 
-    getDoc(doc(db, "catalogues", category.collection))
-      .then((snapshot) => {
+    const loadGallery = async () => {
+      try {
+        const snapshot = await getDoc(
+          doc(db, "catalogues", category.collection)
+        );
         if (!active) return;
 
-        const data = snapshot.data() as Partial<GalleryDocument> | undefined;
+        if (snapshot.exists()) {
+          const data = snapshot.data() as Partial<GalleryDocument>;
+          setGallery({
+            name: data.name ?? category.title,
+            images: data.images ?? [],
+            trash: data.trash ?? [],
+          });
+          return;
+        }
+
+        if (category.legacyGroupedCollection) {
+          const legacySnapshot = await getDocs(
+            collection(db, category.legacyGroupedCollection)
+          );
+          if (!active) return;
+
+          const legacyGalleries = legacySnapshot.docs
+            .map((item) => {
+              const data = item.data() as Partial<GalleryDocument>;
+              return {
+                name: data.name ?? item.id,
+                images: data.images ?? [],
+                trash: data.trash ?? [],
+                order: data.order,
+              };
+            })
+            .sort(
+              (first, second) =>
+                (first.order ?? Number.MAX_SAFE_INTEGER) -
+                  (second.order ?? Number.MAX_SAFE_INTEGER) ||
+                first.name.localeCompare(second.name)
+            );
+
+          setGallery({
+            name: category.title,
+            images: legacyGalleries.flatMap((item) => item.images),
+            trash: legacyGalleries.flatMap((item) => item.trash),
+          });
+          return;
+        }
+
         setGallery({
-          name: data?.name ?? category.title,
-          images: data?.images ?? [],
-          trash: data?.trash ?? [],
+          name: category.title,
+          images: [],
+          trash: [],
         });
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    };
+
+    void loadGallery();
 
     return () => {
       active = false;
     };
-  }, [category.collection, category.title]);
+  }, [
+    category.collection,
+    category.legacyGroupedCollection,
+    category.title,
+  ]);
 
   const images = gallery?.images ?? [];
 

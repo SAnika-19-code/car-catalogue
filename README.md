@@ -11,12 +11,12 @@ copies of the same gallery code.
 ### Company-wise galleries
 
 - Car Seat Covers
-- Roof Design
 
 Customers first choose a company and then browse its designs.
 
 ### Direct galleries
 
+- Roof Design
 - Steering Covers
 - Floor Lamination
 
@@ -98,7 +98,6 @@ Company-wise galleries use one Firestore collection per category:
 
 ```text
 seat-covers/{companyId}
-roof-design/{companyId}
 ```
 
 Each company document contains:
@@ -115,11 +114,18 @@ Direct galleries use documents inside the `catalogues` collection:
 ```text
 catalogues/steering-covers
 catalogues/floor-lamination
+catalogues/roof-design
 ```
 
 Each direct-gallery document contains the same `name`, `images`, and `trash`
 fields. The `order` field is used by company-wise collections and determines
 the company sequence shown in both admin and customer views.
+
+Older Roof Design company documents under `roof-design/{companyId}` are read
+as a compatibility fallback until the unified `catalogues/roof-design`
+document is created. Opening Roof Design in the authenticated admin panel
+automatically merges the old company images into the new single-gallery
+document.
 
 ## Firestore Security Rules
 

@@ -37,8 +37,24 @@ export default function AdminDashboard() {
         }
 
         const snapshot = await getDoc(doc(db, "catalogues", category.collection));
-        const data = snapshot.data() as { images?: string[] } | undefined;
+        if (!snapshot.exists() && category.slug === "roof-design") {
+          const legacySnapshot = await getDocs(
+            collection(db, "roof-design")
+          );
+          const imageCount = legacySnapshot.docs.reduce((total, item) => {
+            const data = item.data() as { images?: string[] };
+            return total + (data.images?.length ?? 0);
+          }, 0);
 
+          return {
+            slug: category.slug,
+            title: category.title,
+            galleries: 1,
+            images: imageCount,
+          };
+        }
+
+        const data = snapshot.data() as { images?: string[] } | undefined;
         return {
           slug: category.slug,
           title: category.title,
