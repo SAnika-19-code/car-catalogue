@@ -49,6 +49,7 @@ Customers browse all designs directly without choosing a company.
 ## Admin Features
 
 - Firebase Authentication login gate for the complete admin area
+- Firebase `admin: true` custom-claim authorization for all admin writes
 - Dashboard totals across all catalogue categories
 - Category-based gallery management
 - Create, rename, and delete companies
@@ -62,7 +63,8 @@ Customers browse all designs directly without choosing a company.
 - Soft-delete confirmation with error-only failure messaging
 - Permanent recycle-bin clearing from both Cloudinary and Firestore
 - Permanent deletion also supports photos uploaded before this feature was added
-- Firebase-authenticated server endpoint for protected Cloudinary deletion
+- Gallery-scoped Cloudinary deletion restricted to claimed administrators
+- Partial uploads retain successful files and queue only failures for retry
 - Clean original images in admin views without public watermarks
 - Legacy seat-cover admin links redirect to the new category routes
 
@@ -129,27 +131,31 @@ document.
 
 ## Firestore Security Rules
 
-Public visitors can read catalogue data. Only authenticated Firebase users can
-write:
+Public visitors can read catalogue data. Writes require a Firebase user whose
+ID token contains the `admin: true` custom claim:
 
 ```js
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
     match /seat-covers/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /roof-design/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /catalogues/{document=**} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /{document=**} {
@@ -158,6 +164,28 @@ service cloud.firestore {
   }
 }
 ```
+
+The deployable rules are stored in `firestore.rules`, with their Firebase
+configuration in `firebase.json`. Deploy them with:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+### Assigning administrator access
+
+Creating a Firebase Authentication account does not make it an administrator.
+From a trusted Firebase Admin SDK environment, assign the claim once using the
+account UID:
+
+```js
+await admin.auth().setCustomUserClaims("FIREBASE_USER_UID", {
+  admin: true,
+});
+```
+
+After setting the claim, sign out and sign back in so Firebase issues a fresh
+ID token. Never set custom claims from browser code.
 
 ## Cloudinary
 
@@ -183,15 +211,29 @@ the Firestore recycle bin. This keeps the asset available for restoration.
 
 When **Empty Bin** is confirmed:
 
-1. The server verifies the current Firebase admin login.
-2. The Cloudinary public ID is recovered from each stored image URL.
-3. The original asset and its cached transformations are deleted from
+1. The server verifies the Firebase `admin: true` custom claim.
+2. The requested category and company are resolved to one Firestore gallery.
+3. Every submitted URL is verified against that gallery's current recycle bin.
+4. The Cloudinary public ID is recovered from each verified image URL.
+5. The original asset and its cached transformations are deleted from
    Cloudinary.
-4. Only successfully deleted URLs are removed from the Firestore recycle bin.
+6. Only successfully deleted URLs are removed from the Firestore recycle bin.
 
 This URL-based lookup means photos uploaded before permanent Cloudinary
 deletion was introduced are supported without re-uploading or migrating them.
 Any failed deletion remains in the recycle bin so it can be retried safely.
+
+## Reliability and accessibility
+
+- Concurrent uploads use settled results: successful files are saved even when
+  another file fails, and only failed files remain queued for retry.
+- Firestore read failures display a visible error instead of an empty
+  catalogue.
+- The fullscreen viewer is an accessible modal with focus trapping, focus
+  restoration, Escape-key closing, keyboard navigation, and background scroll
+  locking.
+- Site metadata includes a descriptive title, description, keywords, Open
+  Graph fields, and Twitter card information.
 
 ## Environment Variables
 

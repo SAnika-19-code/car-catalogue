@@ -38,6 +38,9 @@ export function ImageLightbox({
   inquiryContext,
   onSelect,
 }: ImageLightboxProps) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previouslyFocusedElement = useRef<HTMLElement | null>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const touchWidth = useRef(0);
@@ -55,6 +58,7 @@ export function ImageLightbox({
   >(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
+  const isOpen = selectedIndex !== null && images.length > 0;
 
   const resetZoom = () => {
     setZoomScale(1);
@@ -65,20 +69,76 @@ export function ImageLightbox({
   };
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    previouslyFocusedElement.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusFrame = window.requestAnimationFrame(() => {
+      closeButtonRef.current?.focus();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocusedElement.current?.focus();
+      previouslyFocusedElement.current = null;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (selectedIndex === null || images.length === 0) return;
 
+      if (event.key === "Tab") {
+        const focusableElements = Array.from(
+          dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+          ) ?? []
+        ).filter((element) => !element.hasAttribute("disabled"));
+
+        if (focusableElements.length === 0) {
+          event.preventDefault();
+          dialogRef.current?.focus();
+          return;
+        }
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (
+          event.shiftKey &&
+          (document.activeElement === firstElement ||
+            document.activeElement === dialogRef.current)
+        ) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (
+          !event.shiftKey &&
+          document.activeElement === lastElement
+        ) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      }
+
       if (event.key === "Escape") {
+        event.preventDefault();
         resetZoom();
         onSelect(null);
       }
 
       if (event.key === "ArrowRight") {
+        event.preventDefault();
         resetZoom();
         onSelect((selectedIndex + 1) % images.length);
       }
 
       if (event.key === "ArrowLeft") {
+        event.preventDefault();
         resetZoom();
         onSelect((selectedIndex - 1 + images.length) % images.length);
       }
@@ -289,10 +349,16 @@ export function ImageLightbox({
 
   return (
     <div
+      ref={dialogRef}
       className="lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${title} image viewer`}
+      tabIndex={-1}
       onContextMenu={(event) => event.preventDefault()}
     >
       <button
+        ref={closeButtonRef}
         type="button"
         onClick={() => {
           resetZoom();

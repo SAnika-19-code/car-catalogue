@@ -21,6 +21,7 @@ export function CompanyCataloguePage({
 }: CompanyCataloguePageProps) {
   const [company, setCompany] = useState<GalleryDocument | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -41,6 +42,14 @@ export function CompanyCataloguePage({
             : null
         );
       })
+      .catch(() => {
+        if (active) {
+          setCompany(null);
+          setError(
+            "This catalogue could not be loaded. Please check your connection and try again."
+          );
+        }
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -57,6 +66,10 @@ export function CompanyCataloguePage({
     <main className="catalogue-shell">
       {loading ? (
         <div className="loading-state">Loading...</div>
+      ) : error ? (
+        <div className="error-state" role="alert">
+          {error}
+        </div>
       ) : company ? (
         <>
           <div className="catalogue-header">

@@ -14,6 +14,7 @@ type FlatCataloguePageProps = {
 export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
   const [gallery, setGallery] = useState<GalleryDocument | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -72,6 +73,13 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
           images: [],
           trash: [],
         });
+      } catch {
+        if (active) {
+          setGallery(null);
+          setError(
+            "This catalogue could not be loaded. Please check your connection and try again."
+          );
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -100,6 +108,10 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
 
       {loading ? (
         <div className="loading-state">Loading...</div>
+      ) : error ? (
+        <div className="error-state" role="alert">
+          {error}
+        </div>
       ) : (
         <GalleryGrid
           images={images}
@@ -108,13 +120,15 @@ export function FlatCataloguePage({ category }: FlatCataloguePageProps) {
         />
       )}
 
-      <ImageLightbox
-        images={images}
-        selectedIndex={selectedIndex}
-        title={category.title}
-        inquiryLabel={category.inquiryLabel}
-        onSelect={setSelectedIndex}
-      />
+      {!error && (
+        <ImageLightbox
+          images={images}
+          selectedIndex={selectedIndex}
+          title={category.title}
+          inquiryLabel={category.inquiryLabel}
+          onSelect={setSelectedIndex}
+        />
+      )}
     </main>
   );
 }

@@ -16,6 +16,7 @@ type GroupedCataloguePageProps = {
 export function GroupedCataloguePage({ category }: GroupedCataloguePageProps) {
   const [companies, setCompanies] = useState<CompanyDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -44,6 +45,14 @@ export function GroupedCataloguePage({ category }: GroupedCataloguePageProps) {
             )
         );
       })
+      .catch(() => {
+        if (active) {
+          setCompanies([]);
+          setError(
+            "This catalogue could not be loaded. Please check your connection and try again."
+          );
+        }
+      })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -63,6 +72,10 @@ export function GroupedCataloguePage({ category }: GroupedCataloguePageProps) {
 
       {loading ? (
         <div className="loading-state">Loading...</div>
+      ) : error ? (
+        <div className="error-state" role="alert">
+          {error}
+        </div>
       ) : (
         <div className="company-grid">
           {companies.map((company) => (

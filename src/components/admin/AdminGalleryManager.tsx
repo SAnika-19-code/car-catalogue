@@ -378,36 +378,65 @@ export function AdminGalleryManager({
 
     try {
       const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-      const uploadedUrls = await Promise.all(
+      const uploadResults = await Promise.allSettled(
         files.map(async (file, index) => {
-          const uploadedUrl = await uploadCloudinaryFile({
-            file,
-            endpoint,
-            uploadPreset,
-            onProgress: (loadedBytes) => {
-              loadedByFile[index] = Math.min(loadedBytes, file.size);
-              updateProgress("uploading");
-            },
-          });
-
-          loadedByFile[index] = file.size;
-          completedFiles += 1;
-          updateProgress("uploading");
-          return uploadedUrl;
+          try {
+            return await uploadCloudinaryFile({
+              file,
+              endpoint,
+              uploadPreset,
+              onProgress: (loadedBytes) => {
+                loadedByFile[index] = Math.min(loadedBytes, file.size);
+                updateProgress("uploading");
+              },
+            });
+          } finally {
+            completedFiles += 1;
+            updateProgress("uploading");
+          }
         })
       );
 
-      updateProgress("saving");
-      await saveGallery({
-        ...gallery,
-        images: [...images, ...uploadedUrls],
-      });
-      setFiles([]);
-      updateProgress("complete");
+      const uploadedUrls = uploadResults.flatMap((result) =>
+        result.status === "fulfilled" ? [result.value] : []
+      );
+      const failedFiles = files.filter(
+        (_, index) => uploadResults[index].status === "rejected"
+      );
+
+      if (uploadedUrls.length > 0) {
+        updateProgress("saving");
+        await saveGallery({
+          ...gallery,
+          images: [...images, ...uploadedUrls],
+        });
+      }
+
+      setFiles(failedFiles);
+
+      if (failedFiles.length > 0) {
+        const firstFailure = uploadResults.find(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected"
+        );
+        const failureMessage =
+          firstFailure?.reason instanceof Error
+            ? firstFailure.reason.message
+            : "Cloudinary upload failed.";
+
+        updateProgress(
+          "error",
+          `${uploadedUrls.length} photo${uploadedUrls.length === 1 ? "" : "s"} saved; ${failedFiles.length} failed. Only the failed files remain queued for retry. ${failureMessage}`
+        );
+      } else {
+        updateProgress("complete");
+      }
     } catch (error) {
       updateProgress(
         "error",
-        error instanceof Error ? error.message : "Upload failed."
+        error instanceof Error
+          ? `Uploaded photos could not be saved to the gallery. ${error.message}`
+          : "Uploaded photos could not be saved to the gallery."
       );
     }
   };
@@ -499,7 +528,11 @@ export function AdminGalleryManager({
           Authorization: `Bearer ${idToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ urls: trash }),
+        body: JSON.stringify({
+          urls: trash,
+          category: category.slug,
+          companyId,
+        }),
       });
       const result = (await response.json()) as {
         error?: string;

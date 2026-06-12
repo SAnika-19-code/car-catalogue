@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  getIdTokenResult,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -17,21 +18,43 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
   const [loggedIn, setLoggedIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setLoggedIn(Boolean(user));
-      setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setLoggedIn(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const token = await getIdTokenResult(user, true);
+        const isAdmin = token.claims.admin === true;
+        setLoggedIn(isAdmin);
+
+        if (!isAdmin) {
+          setAuthError("This account does not have administrator access.");
+          await signOut(auth);
+        }
+      } catch {
+        setLoggedIn(false);
+        setAuthError("Administrator access could not be verified.");
+      } finally {
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
   }, []);
 
   const login = async () => {
+    setAuthError("");
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch {
-      alert("Invalid email or password");
+      setAuthError("Invalid email or password.");
     }
   };
 
@@ -74,6 +97,12 @@ export function AdminAuthGate({ children }: AdminAuthGateProps) {
           >
             Login
           </button>
+
+          {authError && (
+            <p role="alert" className="mt-4 text-center text-sm text-red-300">
+              {authError}
+            </p>
+          )}
         </div>
       </div>
     );

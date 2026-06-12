@@ -268,13 +268,20 @@ img {
 }
 
 .empty-state,
-.loading-state {
+.loading-state,
+.error-state {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.07);
   color: var(--muted);
   padding: 28px;
   text-align: center;
+}
+
+.error-state {
+  border-color: rgba(226, 107, 107, 0.55);
+  background: rgba(116, 27, 27, 0.22);
+  color: #ffd1d1;
 }
 
 .lightbox {

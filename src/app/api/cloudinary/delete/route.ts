@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
+import { getCatalogueCategory } from "@/catalogue/categories";
 
 export const runtime = "nodejs";
 
 type DeleteRequest = {
   urls?: unknown;
+  category?: unknown;
+  companyId?: unknown;
 };
 
 type CloudinaryDestroyResponse = {
@@ -11,6 +14,11 @@ type CloudinaryDestroyResponse = {
   error?: {
     message?: string;
   };
+};
+
+type FirebaseLookupUser = {
+  localId?: string;
+  customAttributes?: string;
 };
 
 function getBearerToken(request: Request) {
@@ -21,7 +29,7 @@ function getBearerToken(request: Request) {
   return authorization.slice("Bearer ".length).trim();
 }
 
-async function verifyFirebaseUser(idToken: string) {
+async function verifyFirebaseAdmin(idToken: string) {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!apiKey) throw new Error("Firebase server settings are missing.");
 
@@ -37,8 +45,85 @@ async function verifyFirebaseUser(idToken: string) {
 
   if (!response.ok) return false;
 
-  const data = (await response.json()) as { users?: unknown[] };
-  return Boolean(data.users?.length);
+  const data = (await response.json()) as { users?: FirebaseLookupUser[] };
+  const user = data.users?.[0];
+  if (!user?.localId) return false;
+
+  try {
+    const claims = JSON.parse(user.customAttributes ?? "{}") as {
+      admin?: unknown;
+    };
+    return claims.admin === true;
+  } catch {
+    return false;
+  }
+}
+
+function getGalleryDocumentPath(categorySlug: string, companyId: unknown) {
+  const category = getCatalogueCategory(categorySlug);
+  if (!category) return null;
+
+  if (category.mode === "flat") {
+    return `catalogues/${category.collection}`;
+  }
+
+  if (
+    typeof companyId !== "string" ||
+    !/^[a-zA-Z0-9_-]+$/.test(companyId)
+  ) {
+    return null;
+  }
+
+  return `${category.collection}/${companyId}`;
+}
+
+async function getGalleryTrash({
+  documentPath,
+  idToken,
+}: {
+  documentPath: string;
+  idToken: string;
+}) {
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error("Firebase project settings are missing.");
+
+  const encodedPath = documentPath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${encodedPath}`,
+    {
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      response.status === 404
+        ? "Gallery not found."
+        : "Gallery ownership could not be verified."
+    );
+  }
+
+  const data = (await response.json()) as {
+    fields?: {
+      trash?: {
+        arrayValue?: {
+          values?: Array<{ stringValue?: string }>;
+        };
+      };
+    };
+  };
+
+  return new Set(
+    (data.fields?.trash?.arrayValue?.values ?? [])
+      .map((value) => value.stringValue)
+      .filter((value): value is string => Boolean(value))
+  );
 }
 
 function getCloudinaryPublicId(urlValue: string, cloudName: string) {
@@ -141,8 +226,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (!(await verifyFirebaseUser(idToken))) {
-      return Response.json({ error: "Unauthorized." }, { status: 401 });
+    if (!(await verifyFirebaseAdmin(idToken))) {
+      return Response.json(
+        { error: "Administrator access is required." },
+        { status: 403 }
+      );
     }
   } catch {
     return Response.json(
@@ -184,7 +272,51 @@ export async function POST(request: Request) {
     );
   }
 
+  if (typeof body.category !== "string") {
+    return Response.json(
+      { error: "A valid gallery is required." },
+      { status: 400 }
+    );
+  }
+
+  const documentPath = getGalleryDocumentPath(
+    body.category,
+    body.companyId
+  );
+  if (!documentPath) {
+    return Response.json(
+      { error: "A valid gallery is required." },
+      { status: 400 }
+    );
+  }
+
   const urls = [...new Set(body.urls as string[])];
+  let galleryTrash: Set<string>;
+
+  try {
+    galleryTrash = await getGalleryTrash({ documentPath, idToken });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Gallery ownership could not be verified.",
+      },
+      { status: 403 }
+    );
+  }
+
+  if (urls.some((url) => !galleryTrash.has(url))) {
+    return Response.json(
+      {
+        error:
+          "Deletion was rejected because one or more photos are not in this gallery's recycle bin.",
+      },
+      { status: 403 }
+    );
+  }
+
   const deletedUrls: string[] = [];
   const failed: Array<{ url: string; error: string }> = [];
 
